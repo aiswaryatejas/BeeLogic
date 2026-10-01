@@ -11,6 +11,7 @@ from simulation.decision import (
     STRATEGY_INTELLIGENT,
     STRATEGY_LABELS,
 )
+from simulation.sprites import SpriteManager
 from analysis import comparison
 
 # Layout constants
@@ -171,6 +172,9 @@ class BeeLogicApp:
         self.strategies = [STRATEGY_NEAREST, STRATEGY_GREEDY, STRATEGY_INTELLIGENT]
         self.sim_speed = DEFAULT_SPEED
 
+        self.sprite_mgr = SpriteManager(cell_size=CELL)
+        self.anim_time = 0.0
+
         self.running_sim = False
         self.move_accumulator = 0.0
 
@@ -288,6 +292,9 @@ class BeeLogicApp:
         self.running_sim = False
 
     def update(self, dt):
+        # Advance animation clock continuously so idle / wing flapping is active
+        self.anim_time += dt * (min(2.5, self.sim_speed * 0.7 + 0.3) if self.running_sim else 1.0)
+
         if not self.running_sim or self.show_comparison:
             return
 
@@ -313,49 +320,75 @@ class BeeLogicApp:
         return pygame.Rect(x * CELL, y * CELL, CELL, CELL)
 
     def draw_flower(self, surface, x, y, nectar, is_available, flower_id=None):
+        fid = flower_id if flower_id is not None else 1
+        sprite = self.sprite_mgr.get_flower_sprite(fid, is_available)
         center_x = x * CELL + CELL // 2
         center_y = y * CELL + CELL // 2
-        petal_dist = 7
-        petal_radius = 5
+        sw, sh = sprite.get_size()
+        surface.blit(sprite, (center_x - sw // 2, center_y - sh // 2))
 
         if is_available:
-            for i in range(5):
-                angle = i * (2 * math.pi / 5)
-                px = center_x + int(petal_dist * math.cos(angle))
-                py = center_y + int(petal_dist * math.sin(angle))
-                pygame.draw.circle(surface, PETAL_ACTIVE, (px, py), petal_radius)
-            pygame.draw.circle(surface, CENTER_ACTIVE, (center_x, center_y), 5)
-            
-            # Draw nectar count in center
-            num = self.font_small.render(str(nectar), True, (255, 255, 255))
-            surface.blit(num, (center_x - num.get_width() // 2, center_y - num.get_height() // 2))
-
-            # CHANGE 1: Persistent Flower ID Badge above flower
+            # Persistent Flower ID Badge above flower
             if flower_id is not None:
-                id_tag = self.font_badge.render(f"#{flower_id}", True, (37, 99, 235))
-                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, center_y - 18))
+                id_tag = self.font_badge.render(f"#{flower_id}", True, ACCENT)
+                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL - 1))
+
+            # Nectar count pill badge at bottom
+            num_surf = self.font_badge.render(str(nectar), True, (255, 255, 255))
+            pw = num_surf.get_width() + 6
+            ph = num_surf.get_height() + 2
+            px = center_x - pw // 2
+            py = y * CELL + CELL - ph - 1
+            pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            pygame.draw.rect(pill_bg, (15, 23, 42, 210), (0, 0, pw, ph), border_radius=4)
+            surface.blit(pill_bg, (px, py))
+            surface.blit(num_surf, (px + 3, py + 1))
         else:
-            pygame.draw.circle(surface, PETAL_DEPLETED, (center_x, center_y), 7)
-            pygame.draw.circle(surface, CENTER_DEPLETED, (center_x, center_y), 7, width=1)
-            pygame.draw.line(surface, (100, 100, 100), (center_x - 4, center_y - 4), (center_x + 4, center_y + 4), 2)
-            pygame.draw.line(surface, (100, 100, 100), (center_x - 4, center_y + 4), (center_x + 4, center_y - 4), 2)
+            # Depleted flower ID and indicator
+            if flower_id is not None:
+                id_tag = self.font_badge.render(f"#{flower_id}", True, (148, 163, 184))
+                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL - 1))
+            d_tag = self.font_badge.render("0", True, (148, 163, 184))
+            surface.blit(d_tag, (center_x - d_tag.get_width() // 2, y * CELL + CELL - 12))
 
     def draw_bee(self, surface, x, y):
-        cx = x * CELL + CELL // 2
-        cy = y * CELL + CELL // 2
+        # Determine action and direction
+        if not self.running_sim or self.bee.finished:
+            action = "idle"
+        else:
+            action = getattr(self.bee, "activity", "fly")
+            if action not in ("fly", "harvest", "deposit", "idle"):
+                action = "fly"
 
-        pygame.draw.ellipse(surface, (220, 240, 255), (cx - 9, cy - 12, 8, 12))
-        pygame.draw.ellipse(surface, (220, 240, 255), (cx + 1, cy - 12, 8, 12))
-        pygame.draw.ellipse(surface, (245, 180, 0), (cx - 10, cy - 7, 20, 14))
-        pygame.draw.rect(surface, (20, 20, 20), (cx - 4, cy - 7, 3, 14))
-        pygame.draw.rect(surface, (20, 20, 20), (cx + 3, cy - 7, 3, 14))
-        pygame.draw.circle(surface, (20, 20, 20), (cx + 8, cy), 4)
-        pygame.draw.circle(surface, (255, 255, 255), (cx + 9, cy - 1), 1)
+        direction = getattr(self.bee, "facing", "right")
+        frame = self.sprite_mgr.get_bee_frame(action, direction, self.anim_time)
+
+        # Smooth position interpolation between steps
+        if self.running_sim and hasattr(self.bee, "prev_pos") and self.bee.prev_pos != (x, y):
+            t = min(1.0, max(0.0, self.move_accumulator))
+            vx = self.bee.prev_pos[0] + (x - self.bee.prev_pos[0]) * t
+            vy = self.bee.prev_pos[1] + (y - self.bee.prev_pos[1]) * t
+        else:
+            vx = x
+            vy = y
+
+        cx = vx * CELL + CELL // 2
+        cy = vy * CELL + CELL // 2
+
+        # Draw soft elevation shadow under bee
+        shadow_surf = pygame.Surface((22, 9), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (15, 23, 42, 65), (0, 0, 22, 9))
+        surface.blit(shadow_surf, (int(cx - 11), int(cy + 10)))
+
+        # Blit animated bee frame
+        bw = frame.get_width()
+        bh = frame.get_height()
+        surface.blit(frame, (int(cx - bw // 2), int(cy - bh // 2 - 2)))
 
         # On-Bee Capacity Badge
         current_load = self.bee.nectar
         max_cap = self.bee.max_nectar_capacity
-        
+
         if current_load >= max_cap:
             badge_str = f"[{current_load}/{max_cap} FULL -> RETURNING]"
             badge_bg = (220, 38, 38)
@@ -367,17 +400,17 @@ class BeeLogicApp:
             badge_bg = (100, 116, 139)
 
         text_surf = self.font_badge.render(badge_str, True, (255, 255, 255))
-        bx = cx + 14
-        by = cy - 18
-        bw = text_surf.get_width() + 8
-        bh = text_surf.get_height() + 4
+        bx = int(cx + 16)
+        by = int(cy - 20)
+        bw_badge = text_surf.get_width() + 8
+        bh_badge = text_surf.get_height() + 4
 
-        if bx + bw > MAP_W:
-            bx = cx - bw - 14
+        if bx + bw_badge > MAP_W:
+            bx = int(cx - bw_badge - 16)
         if by < 5:
-            by = cy + 12
+            by = int(cy + 14)
 
-        badge_rect = pygame.Rect(bx, by, bw, bh)
+        badge_rect = pygame.Rect(bx, by, bw_badge, bh_badge)
         pygame.draw.rect(surface, badge_bg, badge_rect, border_radius=4)
         surface.blit(text_surf, (bx + 4, by + 2))
 
@@ -406,7 +439,7 @@ class BeeLogicApp:
         label = self.font_small.render("HIVE", True, (255, 255, 255))
         self.canvas.blit(label, (hive_rect.x + (CELL - label.get_width()) // 2, hive_rect.y + 10))
 
-        # CHANGE 2: Dynamic Glowing Target Outline & Floating Target Badge
+        # Dynamic Glowing Target Outline & Floating Target Badge
         target_flower = getattr(self.bee, "_target_flower", None)
         if target_flower is not None:
             r = self.cell_rect(target_flower.x, target_flower.y)
@@ -425,18 +458,37 @@ class BeeLogicApp:
         self.draw_legend()
 
     def draw_legend(self):
-        leg_w, leg_h = 240, 24
-        leg_rect = pygame.Rect(10, MAP_H - 34, leg_w, leg_h)
-        pygame.draw.rect(self.canvas, (255, 255, 255, 220), leg_rect, border_radius=6)
+        leg_w, leg_h = 280, 26
+        leg_rect = pygame.Rect(10, MAP_H - 36, leg_w, leg_h)
+        pygame.draw.rect(self.canvas, (255, 255, 255, 230), leg_rect, border_radius=6)
         pygame.draw.rect(self.canvas, CARD_BORDER, leg_rect, width=1, border_radius=6)
 
-        items = [("Hive", HIVE_COLOR), ("Obstacle", OBSTACLE), ("Flower", PETAL_ACTIVE), ("Path", PATH_LINE_COLOR)]
-        lx = 20
-        for name, color in items:
-            pygame.draw.circle(self.canvas, color, (lx, MAP_H - 22), 5)
-            t = self.font_small.render(name, True, TEXT_DARK)
-            self.canvas.blit(t, (lx + 8, MAP_H - 28))
-            lx += 55
+        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (14, 14))
+        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (14, 16))
+
+        lx = 18
+        # Hive
+        pygame.draw.rect(self.canvas, HIVE_COLOR, (lx, MAP_H - 28, 10, 10), border_radius=2)
+        t = self.font_small.render("Hive", True, TEXT_DARK)
+        self.canvas.blit(t, (lx + 14, MAP_H - 30))
+        lx += 52
+
+        # Obstacle
+        pygame.draw.rect(self.canvas, OBSTACLE, (lx, MAP_H - 28, 10, 10), border_radius=2)
+        t = self.font_small.render("Obstacle", True, TEXT_DARK)
+        self.canvas.blit(t, (lx + 14, MAP_H - 30))
+        lx += 68
+
+        # Flower
+        self.canvas.blit(flower_icon, (lx, MAP_H - 30))
+        t = self.font_small.render("Flower", True, TEXT_DARK)
+        self.canvas.blit(t, (lx + 18, MAP_H - 30))
+        lx += 60
+
+        # Bee
+        self.canvas.blit(bee_icon, (lx, MAP_H - 31))
+        t = self.font_small.render("Bee", True, TEXT_DARK)
+        self.canvas.blit(t, (lx + 18, MAP_H - 30))
 
     def draw_progress_bar(self, surface, x, y, width, height, current, max_val, fill_color):
         ratio = min(1.0, max(0.0, current / max_val))
