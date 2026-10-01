@@ -2,16 +2,16 @@ import sys
 import math
 import pygame
 
-from environment import Environment, GRID_COLS, GRID_ROWS
-from bee import Bee
-from decision import (
+from simulation.environment import Environment, GRID_COLS, GRID_ROWS
+from simulation.bee import Bee
+from simulation.decision import (
     SimulationController,
     STRATEGY_NEAREST,
     STRATEGY_GREEDY,
     STRATEGY_INTELLIGENT,
     STRATEGY_LABELS,
 )
-import comparison
+from analysis import comparison
 
 # Layout constants
 CELL = 36
@@ -281,7 +281,7 @@ class BeeLogicApp:
     def run_comparison(self):
         self.comparison_results = comparison.run_comparison(seed=self.seed, max_steps=400, event_step=45)
         try:
-            comparison.save_chart(self.comparison_results, path="comparison_chart.png")
+            comparison.save_chart(self.comparison_results, path="out/comparison_chart.png")
         except Exception:
             pass
         self.show_comparison = True
@@ -680,7 +680,7 @@ class BeeLogicApp:
             self.canvas.blit(self.font_small.render(v_text1, True, (226, 232, 240)), (55, y + 36))
             self.canvas.blit(self.font_small.render(v_text2, True, (226, 232, 240)), (55, y + 58))
 
-        hint = self.font_small.render("Click Start or Reset to return. Chart saved to comparison_chart.png. Press F11 for Fullscreen.", True, (148, 163, 184))
+        hint = self.font_small.render("Click Start or Reset to return. Chart saved to out/comparison_chart.png. Press F11 for Fullscreen.", True, (148, 163, 184))
         self.canvas.blit(hint, (40, WINDOW_H - 30))
 
     def draw(self):

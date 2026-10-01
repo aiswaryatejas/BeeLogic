@@ -18,8 +18,8 @@ This is the "brain" of the project. It contains:
        ("nearest" / "greedy" / "intelligent") step by step.
 """
 
-from bfs import bfs_path, bfs_nearest_flower
-from astar import astar_path
+from algorithms.bfs import bfs_path, bfs_nearest_flower
+from algorithms.astar import astar_path
 
 STRATEGY_NEAREST = "nearest"
 STRATEGY_GREEDY = "greedy"
