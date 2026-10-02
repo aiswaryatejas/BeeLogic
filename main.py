@@ -19,11 +19,17 @@ from analysis import comparison
 CELL = 64
 MAP_W = GRID_COLS * CELL        # 20 * 64 = 1280
 MAP_H = GRID_ROWS * CELL        # 15 * 64 = 960
-PANEL_W = 640                   # 1920 - 1280 = 640
-BUTTON_BAR_H = 120              # 1080 - 960 = 120
 
-WINDOW_W = MAP_W + PANEL_W      # 1920
-WINDOW_H = MAP_H + BUTTON_BAR_H # 1080
+GRID_X = 24                     # Spacing from left of screen
+GRID_Y = 16                     # Spacing from top of screen
+GRID_RADIUS = 16                # Rounded outer corners
+
+WINDOW_W = 1920
+WINDOW_H = 1080
+
+PANEL_X = GRID_X + MAP_W + 20   # 24 + 1280 + 20 = 1324
+PANEL_W = WINDOW_W - PANEL_X - 24 # 1920 - 1324 - 24 = 572
+
 
 DEFAULT_SPEED = 3.0
 
@@ -210,6 +216,13 @@ class BeeLogicApp:
         self.comparison_results = None
         self.show_comparison = False
 
+        self.grid_x = GRID_X
+        self.grid_y = GRID_Y
+        self.grid_surface = pygame.Surface((MAP_W, MAP_H), pygame.SRCALPHA)
+        self.grid_mask = pygame.Surface((MAP_W, MAP_H), pygame.SRCALPHA)
+        self.grid_mask.fill((0, 0, 0, 0))
+        pygame.draw.rect(self.grid_mask, (255, 255, 255, 255), (0, 0, MAP_W, MAP_H), border_radius=GRID_RADIUS)
+
         self._build_controls()
         self.reset_simulation()
 
@@ -227,19 +240,19 @@ class BeeLogicApp:
             pygame.draw.rect(surface, border_color, r, width=border_width, border_radius=border_radius)
 
     def _build_controls(self):
-        y = MAP_H + 16
-        h = 54
+        y = self.grid_y + MAP_H + 14
+        h = 50
         
         self.btn_start = Button((24, y, 110, h), "Start")
-        self.btn_pause = Button((146, y, 110, h), "Pause")
-        self.btn_reset = Button((268, y, 110, h), "Reset")
+        self.btn_pause = Button((144, y, 110, h), "Pause")
+        self.btn_reset = Button((264, y, 110, h), "Reset")
         
         dropdown_options = [(s, STRATEGY_LABELS[s].split(" (")[0]) for s in self.strategies]
-        self.strategy_dropdown = Dropdown((390, y, 330, h), dropdown_options, selected_idx=2)
+        self.strategy_dropdown = Dropdown((384, y, 330, h), dropdown_options, selected_idx=2)
         
-        self.btn_speed = Button((732, y, 160, h), f"Speed: {self.sim_speed:.1f}x")
-        self.btn_trigger = Button((904, y, 240, h), "Deplete Flower")
-        self.btn_compare = Button((1156, y, 270, h), "Run Benchmark (C)")
+        self.btn_speed = Button((724, y, 160, h), f"Speed: {self.sim_speed:.1f}x")
+        self.btn_trigger = Button((894, y, 240, h), "Deplete Flower")
+        self.btn_compare = Button((1144, y, 270, h), "Run Benchmark (C)")
         self.btn_exit = Button((1770, y, 126, h), "Quit (Esc)", is_danger=True)
         
         self.buttons = [
@@ -342,9 +355,9 @@ class BeeLogicApp:
                     elif self.btn_exit.clicked(pos):
                         pygame.quit()
                         sys.exit(0)
-                    elif 0 <= pos[0] < MAP_W and 0 <= pos[1] < MAP_H:
-                        gx = pos[0] // CELL
-                        gy = pos[1] // CELL
+                    elif self.grid_x <= pos[0] < self.grid_x + MAP_W and self.grid_y <= pos[1] < self.grid_y + MAP_H:
+                        gx = (pos[0] - self.grid_x) // CELL
+                        gy = (pos[1] - self.grid_y) // CELL
                         clicked_f = self.env.get_flower_at(gx, gy)
                         if clicked_f is not None and clicked_f.is_available():
                             flower = self.controller.trigger_dynamic_event(target_flower=clicked_f)
@@ -491,40 +504,42 @@ class BeeLogicApp:
         surface.blit(text_surf, (bx + 6, by + 3))
 
     def draw_grid(self):
-        # 1. Solid Grid Canvas (Keeps grid distinct from window backdrop)
-        grid_rect = pygame.Rect(0, 0, MAP_W, MAP_H)
-        pygame.draw.rect(self.canvas, BG, grid_rect)
+        # 1. Clear grid surface
+        self.grid_surface.fill((0, 0, 0, 0))
 
-        # 2. Grid lines
+        # 2. Solid Grid Canvas with rounded corners
+        pygame.draw.rect(self.grid_surface, BG, (0, 0, MAP_W, MAP_H), border_radius=GRID_RADIUS)
+
+        # 3. Grid lines
         for gx in range(GRID_COLS + 1):
-            pygame.draw.line(self.canvas, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H), 1)
+            pygame.draw.line(self.grid_surface, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H), 1)
         for gy in range(GRID_ROWS + 1):
-            pygame.draw.line(self.canvas, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
+            pygame.draw.line(self.grid_surface, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
 
         for (ox, oy) in self.env.obstacles:
             r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
-            pygame.draw.rect(self.canvas, OBSTACLE, r, border_radius=8)
-            pygame.draw.rect(self.canvas, OBSTACLE_BORDER, r, width=1, border_radius=8)
+            pygame.draw.rect(self.grid_surface, OBSTACLE, r, border_radius=8)
+            pygame.draw.rect(self.grid_surface, OBSTACLE_BORDER, r, width=1, border_radius=8)
 
         if self.bee.current_path and len(self.bee.current_path) > 1:
             points = [(px * CELL + CELL // 2, py * CELL + CELL // 2) for (px, py) in self.bee.current_path]
-            pygame.draw.lines(self.canvas, PATH_LINE_COLOR, False, points, 5)
+            pygame.draw.lines(self.grid_surface, PATH_LINE_COLOR, False, points, 5)
             for (px, py) in self.bee.current_path:
                 r = self.cell_rect(px, py).inflate(-40, -40)
-                pygame.draw.rect(self.canvas, PATH_COLOR, r, border_radius=6)
+                pygame.draw.rect(self.grid_surface, PATH_COLOR, r, border_radius=6)
 
         hx, hy = self.env.hive
         hive_rect = pygame.Rect(hx * CELL + 4, hy * CELL + 4, CELL - 8, CELL - 8)
-        pygame.draw.rect(self.canvas, HIVE_COLOR, hive_rect, border_radius=10)
-        pygame.draw.rect(self.canvas, HIVE_BORDER, hive_rect, width=2, border_radius=10)
+        pygame.draw.rect(self.grid_surface, HIVE_COLOR, hive_rect, border_radius=10)
+        pygame.draw.rect(self.grid_surface, HIVE_BORDER, hive_rect, width=2, border_radius=10)
         label = self.font_badge.render("HIVE", True, (255, 255, 255))
-        self.canvas.blit(label, (hive_rect.x + (hive_rect.w - label.get_width()) // 2, hive_rect.y + (hive_rect.h - label.get_height()) // 2))
+        self.grid_surface.blit(label, (hive_rect.x + (hive_rect.w - label.get_width()) // 2, hive_rect.y + (hive_rect.h - label.get_height()) // 2))
 
         # Glowing Target Outline & Badge
         target_flower = getattr(self.bee, "_target_flower", None)
         if target_flower is not None:
             r = self.cell_rect(target_flower.x, target_flower.y)
-            pygame.draw.rect(self.canvas, TARGET_HIGHLIGHT, r.inflate(8, 8), width=3, border_radius=10)
+            pygame.draw.rect(self.grid_surface, TARGET_HIGHLIGHT, r.inflate(8, 8), width=3, border_radius=10)
             
             tf_id = getattr(target_flower, 'id', 'Target')
             lbl = self.font_badge.render(f"TARGET #{tf_id}", True, (234, 88, 12))
@@ -534,49 +549,58 @@ class BeeLogicApp:
             py = r.y - ph - 2
             pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
             pygame.draw.rect(pill_bg, (254, 243, 199, 230), (0, 0, pw, ph), border_radius=4)
-            self.canvas.blit(pill_bg, (px, py))
-            self.canvas.blit(lbl, (px + 5, py + 2))
+            self.grid_surface.blit(pill_bg, (px, py))
+            self.grid_surface.blit(lbl, (px + 5, py + 2))
 
         for f in self.env.flowers:
-            self.draw_flower(self.canvas, f.x, f.y, f.nectar, f.is_available(), flower_id=f.id)
+            self.draw_flower(self.grid_surface, f.x, f.y, f.nectar, f.is_available(), flower_id=f.id)
 
         bx, by = self.bee.pos
-        self.draw_bee(self.canvas, bx, by)
+        self.draw_bee(self.grid_surface, bx, by)
 
-        self.draw_legend()
+        self.draw_legend(self.grid_surface)
 
-    def draw_legend(self):
+        # 4. Mask the outer corners so all drawn elements adhere cleanly to rounded outer shape
+        self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+
+        # 5. Crisp subtle border along rounded outer boundary
+        pygame.draw.rect(self.grid_surface, CARD_BORDER, (0, 0, MAP_W, MAP_H), width=1, border_radius=GRID_RADIUS)
+
+        # 6. Blit onto main canvas at spaced offset
+        self.canvas.blit(self.grid_surface, (self.grid_x, self.grid_y))
+
+    def draw_legend(self, surface):
         leg_w, leg_h = 440, 38
         leg_rect = pygame.Rect(16, MAP_H - 50, leg_w, leg_h)
-        pygame.draw.rect(self.canvas, (255, 255, 255, 235), leg_rect, border_radius=8)
-        pygame.draw.rect(self.canvas, CARD_BORDER, leg_rect, width=1, border_radius=8)
+        pygame.draw.rect(surface, (255, 255, 255, 235), leg_rect, border_radius=8)
+        pygame.draw.rect(surface, CARD_BORDER, leg_rect, width=1, border_radius=8)
 
         flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (20, 20))
         bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (20, 22))
 
         lx = 28
         # Hive
-        pygame.draw.rect(self.canvas, HIVE_COLOR, (lx, MAP_H - 37, 14, 14), border_radius=3)
+        pygame.draw.rect(surface, HIVE_COLOR, (lx, MAP_H - 37, 14, 14), border_radius=3)
         t = self.font_small.render("Hive", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 20, MAP_H - 40))
+        surface.blit(t, (lx + 20, MAP_H - 40))
         lx += 80
 
         # Obstacle
-        pygame.draw.rect(self.canvas, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
+        pygame.draw.rect(surface, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
         t = self.font_small.render("Obstacle", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 20, MAP_H - 40))
+        surface.blit(t, (lx + 20, MAP_H - 40))
         lx += 105
 
         # Flower
-        self.canvas.blit(flower_icon, (lx, MAP_H - 41))
+        surface.blit(flower_icon, (lx, MAP_H - 41))
         t = self.font_small.render("Flower", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 26, MAP_H - 40))
+        surface.blit(t, (lx + 26, MAP_H - 40))
         lx += 95
 
         # Bee
-        self.canvas.blit(bee_icon, (lx, MAP_H - 42))
+        surface.blit(bee_icon, (lx, MAP_H - 42))
         t = self.font_small.render("Bee", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 26, MAP_H - 40))
+        surface.blit(t, (lx + 26, MAP_H - 40))
 
     def draw_progress_bar(self, surface, x, y, width, height, current, max_val, fill_color):
         ratio = min(1.0, max(0.0, current / max_val))
@@ -587,9 +611,9 @@ class BeeLogicApp:
             pygame.draw.rect(surface, fill_color, fill_rect, border_radius=5)
 
     def draw_panel(self):
-        x = MAP_W + 24
-        card_w = PANEL_W - 48
-        y = 16
+        x = PANEL_X
+        card_w = PANEL_W
+        y = self.grid_y
 
         s = self.bee.status_dict()
 
@@ -735,7 +759,7 @@ class BeeLogicApp:
         # ==============================================================
         # Card 3: Live Candidate Decision Matrix
         # ==============================================================
-        card3_h = 440
+        card3_h = 472
         card3 = pygame.Rect(x, y, card_w, card3_h)
         self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card3, border_radius=10, border_color=CARD_BORDER, border_width=1)
 
@@ -743,14 +767,14 @@ class BeeLogicApp:
         cy = y + 14
         self.canvas.blit(self.font_header.render("CANDIDATE DECISION MATRIX", True, ACCENT), (cx, cy))
         
-        formula_tag = self.font_badge.render("Score = Nectar / (Distance ^ 1.5)", True, (100, 116, 139))
+        formula_tag = self.font_badge.render("Score = Nectar / (Dist ^ 1.5)", True, (100, 116, 139))
         self.canvas.blit(formula_tag, (x + card_w - formula_tag.get_width() - 16, cy + 2))
         cy += 28
 
         evals = getattr(self.bee, 'evaluations', [])
         if evals:
-            headers = ["Flower ID", "Distance", "Nectar", "Heuristic Score", "Decision Status"]
-            col_x = [cx + 8, cx + 100, cx + 200, cx + 310, cx + 440]
+            headers = ["Flower ID", "Distance", "Nectar", "Score", "Decision Status"]
+            col_x = [cx + 8, cx + 96, cx + 184, cx + 276, cx + 386]
             
             # Table Header Background
             th_rect = pygame.Rect(cx, cy, card_w - 32, 28)
@@ -771,10 +795,10 @@ class BeeLogicApp:
 
                 self.canvas.blit(self.font_body_bold.render(f"Flower #{cand['id']}", True, txt_c), (col_x[0], cy + 8))
                 self.canvas.blit(self.font_body.render(f"{cand['dist']} steps", True, txt_c), (col_x[1], cy + 8))
-                self.canvas.blit(self.font_body.render(f"{cand['nectar']} units", True, txt_c), (col_x[2], cy + 8))
+                self.canvas.blit(self.font_body.render(f"{cand['nectar']} u", True, txt_c), (col_x[2], cy + 8))
                 self.canvas.blit(self.font_body.render(f"{cand['score']:.2f}", True, txt_c), (col_x[3], cy + 8))
                 
-                status_str = "★ SELECTED" if is_sel else f"Rank #{rank_idx + 1}"
+                status_str = "SELECTED" if is_sel else f"Rank #{rank_idx + 1}"
                 status_surf = self.font_badge.render(status_str, True, (255, 255, 255) if is_sel else (100, 116, 139))
                 st_w = status_surf.get_width() + 10
                 st_h = status_surf.get_height() + 4
@@ -815,11 +839,11 @@ class BeeLogicApp:
 
         # Bottom Shortcut & Info Line
         shortcut_text = "Shortcuts: [Space] Start / Pause   |   [R] Reset Simulation   |   [C] Run Benchmark   |   [Esc / Q] Quit Application"
-        self.canvas.blit(self.font_small_bold.render(shortcut_text, True, (248, 250, 252)), (24, 1045))
+        self.canvas.blit(self.font_small_bold.render(shortcut_text, True, (248, 250, 252)), (24, 1048))
         
         info_text = f"Environment Seed: {self.seed}"
         info_surf = self.font_small_bold.render(info_text, True, (248, 250, 252))
-        self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1045))
+        self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1048))
 
     def draw_event_banner(self):
         text = self.font_header.render(self.event_banner, True, (255, 255, 255))
@@ -827,7 +851,7 @@ class BeeLogicApp:
         pad_y = 12
         w = text.get_width() + pad_x * 2
         h = text.get_height() + pad_y * 2
-        rect = pygame.Rect((MAP_W - w) // 2, 18, w, h)
+        rect = pygame.Rect(self.grid_x + (MAP_W - w) // 2, self.grid_y + 18, w, h)
         pygame.draw.rect(self.canvas, (220, 38, 38), rect, border_radius=10)
         pygame.draw.rect(self.canvas, (255, 255, 255), rect, width=1, border_radius=10)
         self.canvas.blit(text, (rect.x + pad_x, rect.y + pad_y))
@@ -871,7 +895,7 @@ class BeeLogicApp:
                     pygame.draw.rect(self.canvas, (15, 23, 42), row_box, border_radius=8)
 
                 values = [
-                    r["label"] + (" ★ WINNER" if is_winner else ""),
+                    r["label"] + (" [WINNER]" if is_winner else ""),
                     f"{r['nectar_collected']} units",
                     f"{r['distance_travelled']} steps",
                     f"{r['energy_consumed']} units",
