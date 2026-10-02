@@ -1,5 +1,6 @@
 import sys
 import math
+import os
 import pygame
 
 from simulation.environment import Environment, GRID_COLS, GRID_ROWS
@@ -14,19 +15,19 @@ from simulation.decision import (
 from simulation.sprites import SpriteManager
 from analysis import comparison
 
-# Layout constants
-CELL = 36
-MAP_W = GRID_COLS * CELL
-MAP_H = GRID_ROWS * CELL
-PANEL_W = 350
-BUTTON_BAR_H = 60
+# 1080p Layout Constants
+CELL = 64
+MAP_W = GRID_COLS * CELL        # 20 * 64 = 1280
+MAP_H = GRID_ROWS * CELL        # 15 * 64 = 960
+PANEL_W = 640                   # 1920 - 1280 = 640
+BUTTON_BAR_H = 120              # 1080 - 960 = 120
 
-WINDOW_W = MAP_W + PANEL_W
-WINDOW_H = MAP_H + BUTTON_BAR_H
+WINDOW_W = MAP_W + PANEL_W      # 1920
+WINDOW_H = MAP_H + BUTTON_BAR_H # 1080
 
 DEFAULT_SPEED = 3.0
 
-# Academic Palette
+# Academic & Modern UI Palette
 BG = (245, 247, 250)
 GRID_LINE = (226, 232, 240)
 OBSTACLE = (100, 116, 139)
@@ -35,14 +36,9 @@ OBSTACLE_BORDER = (71, 85, 105)
 HIVE_COLOR = (245, 158, 11)
 HIVE_BORDER = (180, 83, 9)
 
-PETAL_ACTIVE = (244, 114, 182)
-CENTER_ACTIVE = (234, 88, 12)
-PETAL_DEPLETED = (203, 213, 225)
-CENTER_DEPLETED = (148, 163, 184)
-
 PATH_COLOR = (147, 197, 253)
 PATH_LINE_COLOR = (37, 99, 235)
-TARGET_HIGHLIGHT = (250, 204, 21)
+TARGET_HIGHLIGHT = (245, 158, 11)
 
 PANEL_BG = (255, 255, 255)
 CARD_BG = (248, 250, 252)
@@ -50,6 +46,7 @@ CARD_BORDER = (226, 232, 240)
 TEXT_DARK = (15, 23, 42)
 TEXT_MUTED = (100, 116, 139)
 ACCENT = (37, 99, 235)
+ACCENT_LIGHT = (239, 246, 255)
 
 BUTTON_BG = (255, 255, 255)
 BUTTON_BORDER = (203, 213, 225)
@@ -62,17 +59,30 @@ NECTAR_BAR = (249, 115, 22)
 
 
 class Button:
-    def __init__(self, rect, label):
+    def __init__(self, rect, label, is_danger=False):
         self.rect = pygame.Rect(rect)
         self.label = label
+        self.is_danger = is_danger
         self.active = False
         self.hovered = False
 
     def draw(self, surface, font):
-        bg = BUTTON_ACTIVE if self.active else (BUTTON_HOVER if self.hovered else BUTTON_BG)
-        text_color = (255, 255, 255) if self.active else TEXT_DARK
-        pygame.draw.rect(surface, bg, self.rect, border_radius=8)
-        pygame.draw.rect(surface, BUTTON_BORDER, self.rect, width=1, border_radius=8)
+        if self.active:
+            bg = (29, 78, 216) if self.hovered else BUTTON_ACTIVE
+            border = (30, 64, 175)
+            text_color = (255, 255, 255)
+        elif self.is_danger:
+            bg = (220, 38, 38) if self.hovered else (254, 242, 242)
+            border = (239, 68, 68) if self.hovered else (252, 165, 165)
+            text_color = (255, 255, 255) if self.hovered else (185, 28, 28)
+        else:
+            bg = BUTTON_HOVER if self.hovered else BUTTON_BG
+            border = ACCENT if self.hovered else BUTTON_BORDER
+            text_color = ACCENT if self.hovered else TEXT_DARK
+
+        pygame.draw.rect(surface, bg, self.rect, border_radius=10)
+        pygame.draw.rect(surface, border, self.rect, width=1, border_radius=10)
+        
         text = font.render(self.label, True, text_color)
         tx = self.rect.x + (self.rect.w - text.get_width()) // 2
         ty = self.rect.y + (self.rect.h - text.get_height()) // 2
@@ -92,44 +102,53 @@ class Dropdown:
         self.selected_idx = selected_idx
         self.is_open = False
         self.hovered_option = -1
+        self.item_height = 50
 
     def draw(self, surface, font):
-        pygame.draw.rect(surface, BUTTON_BG, self.rect, border_radius=8)
-        pygame.draw.rect(surface, ACCENT if self.is_open else BUTTON_BORDER, self.rect, width=1, border_radius=8)
+        pygame.draw.rect(surface, BUTTON_BG, self.rect, border_radius=10)
+        pygame.draw.rect(surface, ACCENT if self.is_open else BUTTON_BORDER, self.rect, width=1, border_radius=10)
         
         label = self.options[self.selected_idx][1]
         text = font.render(label, True, TEXT_DARK)
-        surface.blit(text, (self.rect.x + 10, self.rect.y + (self.rect.h - text.get_height()) // 2))
+        surface.blit(text, (self.rect.x + 16, self.rect.y + (self.rect.h - text.get_height()) // 2))
 
         arrow_color = ACCENT if self.is_open else TEXT_MUTED
-        ax = self.rect.right - 14
+        ax = self.rect.right - 20
         ay = self.rect.centery
         if self.is_open:
-            pygame.draw.polygon(surface, arrow_color, [(ax - 4, ay + 2), (ax + 4, ay + 2), (ax, ay - 3)])
+            pygame.draw.polygon(surface, arrow_color, [(ax - 6, ay + 3), (ax + 6, ay + 3), (ax, ay - 4)])
         else:
-            pygame.draw.polygon(surface, arrow_color, [(ax - 4, ay - 2), (ax + 4, ay - 2), (ax, ay + 3)])
+            pygame.draw.polygon(surface, arrow_color, [(ax - 6, ay - 3), (ax + 6, ay - 3), (ax, ay + 4)])
 
         if self.is_open:
-            menu_h = len(self.options) * self.rect.h
-            menu_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 4, self.rect.w, menu_h)
-            pygame.draw.rect(surface, BUTTON_BG, menu_rect, border_radius=8)
-            pygame.draw.rect(surface, BUTTON_BORDER, menu_rect, width=1, border_radius=8)
+            menu_h = len(self.options) * self.item_height
+            menu_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6, self.rect.w, menu_h)
+            
+            # Shadow
+            shadow_rect = menu_rect.inflate(4, 4)
+            shadow_surf = pygame.Surface((shadow_rect.w, shadow_rect.h), pygame.SRCALPHA)
+            pygame.draw.rect(shadow_surf, (15, 23, 42, 40), (0, 0, shadow_rect.w, shadow_rect.h), border_radius=12)
+            surface.blit(shadow_surf, (shadow_rect.x, shadow_rect.y + 2))
+
+            pygame.draw.rect(surface, BUTTON_BG, menu_rect, border_radius=10)
+            pygame.draw.rect(surface, ACCENT, menu_rect, width=1, border_radius=10)
 
             for i, (_, opt_label) in enumerate(self.options):
-                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 4 + (i * self.rect.h), self.rect.w, self.rect.h)
+                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
                 if i == self.hovered_option:
-                    pygame.draw.rect(surface, BUTTON_HOVER, opt_rect, border_radius=6)
+                    pygame.draw.rect(surface, BUTTON_HOVER, opt_rect, border_radius=8)
                 if i == self.selected_idx:
-                    pygame.draw.rect(surface, CARD_BG, opt_rect, border_radius=6)
+                    pygame.draw.rect(surface, ACCENT_LIGHT, opt_rect, border_radius=8)
                 
-                t = font.render(opt_label, True, ACCENT if i == self.selected_idx else TEXT_DARK)
-                surface.blit(t, (opt_rect.x + 10, opt_rect.y + (opt_rect.h - t.get_height()) // 2))
+                txt_color = ACCENT if i == self.selected_idx else TEXT_DARK
+                t = font.render(opt_label, True, txt_color)
+                surface.blit(t, (opt_rect.x + 16, opt_rect.y + (opt_rect.h - t.get_height()) // 2))
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION and self.is_open:
-            menu_h = len(self.options) * self.rect.h
+            menu_h = len(self.options) * self.item_height
             for i in range(len(self.options)):
-                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 4 + (i * self.rect.h), self.rect.w, self.rect.h)
+                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
                 if opt_rect.collidepoint(event.pos):
                     self.hovered_option = i
                     return
@@ -138,9 +157,9 @@ class Dropdown:
                 self.is_open = not self.is_open
                 return True
             if self.is_open:
-                menu_h = len(self.options) * self.rect.h
+                menu_h = len(self.options) * self.item_height
                 for i in range(len(self.options)):
-                    opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 4 + (i * self.rect.h), self.rect.w, self.rect.h)
+                    opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
                     if opt_rect.collidepoint(event.pos):
                         self.selected_idx = i
                         self.is_open = False
@@ -152,21 +171,31 @@ class Dropdown:
 class BeeLogicApp:
     def __init__(self, seed=42):
         pygame.init()
-        pygame.display.set_caption("BeeLogic - Intelligent Bee Foraging Agent")
+        pygame.display.set_caption("BeeLogic - Intelligent Bee Foraging Simulation [1080p Fullscreen]")
         
         self.base_w = WINDOW_W
         self.base_h = WINDOW_H
         self.canvas = pygame.Surface((self.base_w, self.base_h))
         
-        self.is_fullscreen = False
-        self.screen = pygame.display.set_mode((self.base_w, self.base_h), pygame.RESIZABLE)
+        # 1080p Fullscreen Only
+        try:
+            self.screen = pygame.display.set_mode((self.base_w, self.base_h), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+        except Exception:
+            self.screen = pygame.display.set_mode((self.base_w, self.base_h))
+
         self.clock = pygame.time.Clock()
 
-        self.font = pygame.font.SysFont("Segoe UI", 13)
-        self.font_bold = pygame.font.SysFont("Segoe UI", 14, bold=True)
-        self.font_small = pygame.font.SysFont("Segoe UI", 11)
-        self.font_badge = pygame.font.SysFont("Segoe UI", 10, bold=True)
-        self.font_title = pygame.font.SysFont("Segoe UI", 19, bold=True)
+        # Scaled Typography for 1080p
+        font_family = "Segoe UI, DejaVu Sans, Liberation Sans, Arial, sans-serif"
+        self.font_hero = pygame.font.SysFont(font_family, 30, bold=True)
+        self.font_title = pygame.font.SysFont(font_family, 24, bold=True)
+        self.font_header = pygame.font.SysFont(font_family, 18, bold=True)
+        self.font_body = pygame.font.SysFont(font_family, 16)
+        self.font_body_bold = pygame.font.SysFont(font_family, 16, bold=True)
+        self.font_small = pygame.font.SysFont(font_family, 14)
+        self.font_small_bold = pygame.font.SysFont(font_family, 14, bold=True)
+        self.font_badge = pygame.font.SysFont(font_family, 13, bold=True)
+        self.font_button = pygame.font.SysFont(font_family, 16, bold=True)
 
         self.seed = seed
         self.strategies = [STRATEGY_NEAREST, STRATEGY_GREEDY, STRATEGY_INTELLIGENT]
@@ -185,28 +214,30 @@ class BeeLogicApp:
         self.reset_simulation()
 
     def _build_controls(self):
-        y = MAP_H + 12
-        h = BUTTON_BAR_H - 24
+        y = MAP_H + 16
+        h = 54
         
-        self.btn_start = Button((10, y, 65, h), "Start")
-        self.btn_pause = Button((80, y, 65, h), "Pause")
-        self.btn_reset = Button((150, y, 65, h), "Reset")
+        self.btn_start = Button((24, y, 110, h), "Start")
+        self.btn_pause = Button((146, y, 110, h), "Pause")
+        self.btn_reset = Button((268, y, 110, h), "Reset")
         
         dropdown_options = [(s, STRATEGY_LABELS[s].split(" (")[0]) for s in self.strategies]
-        self.strategy_dropdown = Dropdown((220, y, 160, h), dropdown_options, selected_idx=2)
+        self.strategy_dropdown = Dropdown((390, y, 330, h), dropdown_options, selected_idx=2)
         
-        self.btn_speed = Button((385, y, 90, h), f"Speed: {self.sim_speed:.1f}x")
-        self.btn_trigger = Button((480, y, 110, h), "Deplete Flower")
-        self.btn_compare = Button((595, y, 115, h), "Run Compare")
+        self.btn_speed = Button((732, y, 160, h), f"Speed: {self.sim_speed:.1f}x")
+        self.btn_trigger = Button((904, y, 240, h), "Deplete Flower")
+        self.btn_compare = Button((1156, y, 270, h), "Run Benchmark (C)")
+        self.btn_exit = Button((1770, y, 126, h), "Quit (Esc)", is_danger=True)
         
-        self.buttons = [self.btn_start, self.btn_pause, self.btn_reset, self.btn_speed, self.btn_trigger, self.btn_compare]
-
-    def toggle_fullscreen(self):
-        self.is_fullscreen = not self.is_fullscreen
-        if self.is_fullscreen:
-            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        else:
-            self.screen = pygame.display.set_mode((self.base_w, self.base_h), pygame.RESIZABLE)
+        self.buttons = [
+            self.btn_start,
+            self.btn_pause,
+            self.btn_reset,
+            self.btn_speed,
+            self.btn_trigger,
+            self.btn_compare,
+            self.btn_exit,
+        ]
 
     def reset_simulation(self):
         self.env = Environment(seed=self.seed)
@@ -219,8 +250,8 @@ class BeeLogicApp:
         self.event_banner_timer = 0
 
     def toggle_speed(self):
-        speeds = [1.0, 3.0, 6.0, 10.0]
-        curr_idx = speeds.index(self.sim_speed) if self.sim_speed in speeds else 1
+        speeds = [1.0, 2.0, 3.0, 5.0, 10.0]
+        curr_idx = speeds.index(self.sim_speed) if self.sim_speed in speeds else 2
         self.sim_speed = speeds[(curr_idx + 1) % len(speeds)]
         self.btn_speed.label = f"Speed: {self.sim_speed:.1f}x"
 
@@ -239,14 +270,23 @@ class BeeLogicApp:
                 mapped_pos = (int(event.pos[0] * scale_x), int(event.pos[1] * scale_y))
 
             if event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_F11, pygame.K_f):
-                    self.toggle_fullscreen()
+                if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                    if self.show_comparison:
+                        self.show_comparison = False
+                    else:
+                        pygame.quit()
+                        sys.exit(0)
                 elif event.key == pygame.K_SPACE:
                     self.running_sim = not self.running_sim
                 elif event.key == pygame.K_r:
                     self.reset_simulation()
                 elif event.key == pygame.K_c:
                     self.run_comparison()
+                elif event.key in (pygame.K_t, pygame.K_e):
+                    flower = self.env.trigger_dynamic_event()
+                    if flower:
+                        self.event_banner = f"Dynamic Event: Flower #{flower.id} depleted!"
+                        self.event_banner_timer = 3.5
 
             if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
                 adjusted_event = pygame.event.Event(event.type, pos=mapped_pos, button=getattr(event, 'button', 1))
@@ -264,6 +304,11 @@ class BeeLogicApp:
 
                 if adjusted_event.type == pygame.MOUSEBUTTONDOWN and adjusted_event.button == 1:
                     pos = adjusted_event.pos
+                    if self.show_comparison:
+                        # Clicking anywhere on overlay dismisses or clicking return button
+                        self.show_comparison = False
+                        continue
+
                     if self.btn_start.clicked(pos):
                         self.running_sim = True
                         self.show_comparison = False
@@ -281,6 +326,9 @@ class BeeLogicApp:
                             self.event_banner_timer = 3.5
                     elif self.btn_compare.clicked(pos):
                         self.run_comparison()
+                    elif self.btn_exit.clicked(pos):
+                        pygame.quit()
+                        sys.exit(0)
 
     def run_comparison(self):
         self.comparison_results = comparison.run_comparison(seed=self.seed, max_steps=400, event_step=45)
@@ -292,7 +340,6 @@ class BeeLogicApp:
         self.running_sim = False
 
     def update(self, dt):
-        # Advance animation clock continuously so idle / wing flapping is active
         self.anim_time += dt * (min(2.5, self.sim_speed * 0.7 + 0.3) if self.running_sim else 1.0)
 
         if not self.running_sim or self.show_comparison:
@@ -331,28 +378,26 @@ class BeeLogicApp:
             # Persistent Flower ID Badge above flower
             if flower_id is not None:
                 id_tag = self.font_badge.render(f"#{flower_id}", True, ACCENT)
-                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL - 1))
+                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL + 2))
 
             # Nectar count pill badge at bottom
             num_surf = self.font_badge.render(str(nectar), True, (255, 255, 255))
-            pw = num_surf.get_width() + 6
-            ph = num_surf.get_height() + 2
+            pw = num_surf.get_width() + 10
+            ph = num_surf.get_height() + 4
             px = center_x - pw // 2
-            py = y * CELL + CELL - ph - 1
+            py = y * CELL + CELL - ph - 2
             pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            pygame.draw.rect(pill_bg, (15, 23, 42, 210), (0, 0, pw, ph), border_radius=4)
+            pygame.draw.rect(pill_bg, (15, 23, 42, 220), (0, 0, pw, ph), border_radius=6)
             surface.blit(pill_bg, (px, py))
-            surface.blit(num_surf, (px + 3, py + 1))
+            surface.blit(num_surf, (px + 5, py + 2))
         else:
-            # Depleted flower ID and indicator
             if flower_id is not None:
                 id_tag = self.font_badge.render(f"#{flower_id}", True, (148, 163, 184))
-                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL - 1))
+                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL + 2))
             d_tag = self.font_badge.render("0", True, (148, 163, 184))
-            surface.blit(d_tag, (center_x - d_tag.get_width() // 2, y * CELL + CELL - 12))
+            surface.blit(d_tag, (center_x - d_tag.get_width() // 2, y * CELL + CELL - 18))
 
     def draw_bee(self, surface, x, y):
-        # Determine action and direction
         if not self.running_sim or self.bee.finished:
             action = "idle"
         else:
@@ -376,9 +421,9 @@ class BeeLogicApp:
         cy = vy * CELL + CELL // 2
 
         # Draw soft elevation shadow under bee
-        shadow_surf = pygame.Surface((22, 9), pygame.SRCALPHA)
-        pygame.draw.ellipse(shadow_surf, (15, 23, 42, 65), (0, 0, 22, 9))
-        surface.blit(shadow_surf, (int(cx - 11), int(cy + 10)))
+        shadow_surf = pygame.Surface((36, 14), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (15, 23, 42, 60), (0, 0, 36, 14))
+        surface.blit(shadow_surf, (int(cx - 18), int(cy + 18)))
 
         # Blit animated bee frame
         bw = frame.get_width()
@@ -389,9 +434,18 @@ class BeeLogicApp:
         current_load = self.bee.nectar
         max_cap = self.bee.max_nectar_capacity
 
-        if current_load >= max_cap:
+        if self.bee.finished:
+            badge_str = f"[{current_load}/{max_cap} FINISHED]"
+            badge_bg = (16, 185, 129)
+        elif current_load >= max_cap:
             badge_str = f"[{current_load}/{max_cap} FULL -> RETURNING]"
             badge_bg = (220, 38, 38)
+        elif action == "harvest":
+            badge_str = f"[{current_load}/{max_cap} HARVESTING]"
+            badge_bg = (234, 88, 12)
+        elif action == "deposit":
+            badge_str = f"[{current_load}/{max_cap} DEPOSITING]"
+            badge_bg = (217, 119, 6)
         elif current_load > 0:
             badge_str = f"[{current_load}/{max_cap} SEARCHING]"
             badge_bg = (37, 99, 235)
@@ -400,54 +454,61 @@ class BeeLogicApp:
             badge_bg = (100, 116, 139)
 
         text_surf = self.font_badge.render(badge_str, True, (255, 255, 255))
-        bx = int(cx + 16)
-        by = int(cy - 20)
-        bw_badge = text_surf.get_width() + 8
-        bh_badge = text_surf.get_height() + 4
+        bx = int(cx + 26)
+        by = int(cy - 28)
+        bw_badge = text_surf.get_width() + 12
+        bh_badge = text_surf.get_height() + 6
 
         if bx + bw_badge > MAP_W:
-            bx = int(cx - bw_badge - 16)
-        if by < 5:
-            by = int(cy + 14)
+            bx = int(cx - bw_badge - 26)
+        if by < 8:
+            by = int(cy + 22)
 
         badge_rect = pygame.Rect(bx, by, bw_badge, bh_badge)
-        pygame.draw.rect(surface, badge_bg, badge_rect, border_radius=4)
-        surface.blit(text_surf, (bx + 4, by + 2))
+        pygame.draw.rect(surface, badge_bg, badge_rect, border_radius=6)
+        surface.blit(text_surf, (bx + 6, by + 3))
 
     def draw_grid(self):
         for gx in range(GRID_COLS + 1):
-            pygame.draw.line(self.canvas, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H))
+            pygame.draw.line(self.canvas, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H), 1)
         for gy in range(GRID_ROWS + 1):
-            pygame.draw.line(self.canvas, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL))
+            pygame.draw.line(self.canvas, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
 
         for (ox, oy) in self.env.obstacles:
-            r = self.cell_rect(ox, oy)
-            pygame.draw.rect(self.canvas, OBSTACLE, r, border_radius=4)
-            pygame.draw.rect(self.canvas, OBSTACLE_BORDER, r, width=1, border_radius=4)
+            r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
+            pygame.draw.rect(self.canvas, OBSTACLE, r, border_radius=8)
+            pygame.draw.rect(self.canvas, OBSTACLE_BORDER, r, width=1, border_radius=8)
 
         if self.bee.current_path and len(self.bee.current_path) > 1:
             points = [(px * CELL + CELL // 2, py * CELL + CELL // 2) for (px, py) in self.bee.current_path]
-            pygame.draw.lines(self.canvas, PATH_LINE_COLOR, False, points, 3)
+            pygame.draw.lines(self.canvas, PATH_LINE_COLOR, False, points, 5)
             for (px, py) in self.bee.current_path:
-                r = self.cell_rect(px, py)
-                pygame.draw.rect(self.canvas, PATH_COLOR, r.inflate(-20, -20), border_radius=4)
+                r = self.cell_rect(px, py).inflate(-40, -40)
+                pygame.draw.rect(self.canvas, PATH_COLOR, r, border_radius=6)
 
         hx, hy = self.env.hive
-        hive_rect = self.cell_rect(hx, hy)
-        pygame.draw.rect(self.canvas, HIVE_COLOR, hive_rect, border_radius=6)
-        pygame.draw.rect(self.canvas, HIVE_BORDER, hive_rect, width=2, border_radius=6)
-        label = self.font_small.render("HIVE", True, (255, 255, 255))
-        self.canvas.blit(label, (hive_rect.x + (CELL - label.get_width()) // 2, hive_rect.y + 10))
+        hive_rect = pygame.Rect(hx * CELL + 4, hy * CELL + 4, CELL - 8, CELL - 8)
+        pygame.draw.rect(self.canvas, HIVE_COLOR, hive_rect, border_radius=10)
+        pygame.draw.rect(self.canvas, HIVE_BORDER, hive_rect, width=2, border_radius=10)
+        label = self.font_badge.render("HIVE", True, (255, 255, 255))
+        self.canvas.blit(label, (hive_rect.x + (hive_rect.w - label.get_width()) // 2, hive_rect.y + (hive_rect.h - label.get_height()) // 2))
 
-        # Dynamic Glowing Target Outline & Floating Target Badge
+        # Glowing Target Outline & Badge
         target_flower = getattr(self.bee, "_target_flower", None)
         if target_flower is not None:
             r = self.cell_rect(target_flower.x, target_flower.y)
-            pygame.draw.rect(self.canvas, TARGET_HIGHLIGHT, r.inflate(6, 6), width=3, border_radius=6)
+            pygame.draw.rect(self.canvas, TARGET_HIGHLIGHT, r.inflate(8, 8), width=3, border_radius=10)
             
             tf_id = getattr(target_flower, 'id', 'Target')
             lbl = self.font_badge.render(f"TARGET #{tf_id}", True, (234, 88, 12))
-            self.canvas.blit(lbl, (r.x + (CELL - lbl.get_width()) // 2, r.y - 14))
+            pw = lbl.get_width() + 10
+            ph = lbl.get_height() + 4
+            px = r.x + (CELL - pw) // 2
+            py = r.y - ph - 2
+            pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            pygame.draw.rect(pill_bg, (254, 243, 199, 230), (0, 0, pw, ph), border_radius=4)
+            self.canvas.blit(pill_bg, (px, py))
+            self.canvas.blit(lbl, (px + 5, py + 2))
 
         for f in self.env.flowers:
             self.draw_flower(self.canvas, f.x, f.y, f.nectar, f.is_available(), flower_id=f.id)
@@ -458,168 +519,278 @@ class BeeLogicApp:
         self.draw_legend()
 
     def draw_legend(self):
-        leg_w, leg_h = 280, 26
-        leg_rect = pygame.Rect(10, MAP_H - 36, leg_w, leg_h)
-        pygame.draw.rect(self.canvas, (255, 255, 255, 230), leg_rect, border_radius=6)
-        pygame.draw.rect(self.canvas, CARD_BORDER, leg_rect, width=1, border_radius=6)
+        leg_w, leg_h = 440, 38
+        leg_rect = pygame.Rect(16, MAP_H - 50, leg_w, leg_h)
+        pygame.draw.rect(self.canvas, (255, 255, 255, 235), leg_rect, border_radius=8)
+        pygame.draw.rect(self.canvas, CARD_BORDER, leg_rect, width=1, border_radius=8)
 
-        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (14, 14))
-        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (14, 16))
+        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (20, 20))
+        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (20, 22))
 
-        lx = 18
+        lx = 28
         # Hive
-        pygame.draw.rect(self.canvas, HIVE_COLOR, (lx, MAP_H - 28, 10, 10), border_radius=2)
+        pygame.draw.rect(self.canvas, HIVE_COLOR, (lx, MAP_H - 37, 14, 14), border_radius=3)
         t = self.font_small.render("Hive", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 14, MAP_H - 30))
-        lx += 52
+        self.canvas.blit(t, (lx + 20, MAP_H - 40))
+        lx += 80
 
         # Obstacle
-        pygame.draw.rect(self.canvas, OBSTACLE, (lx, MAP_H - 28, 10, 10), border_radius=2)
+        pygame.draw.rect(self.canvas, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
         t = self.font_small.render("Obstacle", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 14, MAP_H - 30))
-        lx += 68
+        self.canvas.blit(t, (lx + 20, MAP_H - 40))
+        lx += 105
 
         # Flower
-        self.canvas.blit(flower_icon, (lx, MAP_H - 30))
+        self.canvas.blit(flower_icon, (lx, MAP_H - 41))
         t = self.font_small.render("Flower", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 18, MAP_H - 30))
-        lx += 60
+        self.canvas.blit(t, (lx + 26, MAP_H - 40))
+        lx += 95
 
         # Bee
-        self.canvas.blit(bee_icon, (lx, MAP_H - 31))
+        self.canvas.blit(bee_icon, (lx, MAP_H - 42))
         t = self.font_small.render("Bee", True, TEXT_DARK)
-        self.canvas.blit(t, (lx + 18, MAP_H - 30))
+        self.canvas.blit(t, (lx + 26, MAP_H - 40))
 
     def draw_progress_bar(self, surface, x, y, width, height, current, max_val, fill_color):
         ratio = min(1.0, max(0.0, current / max_val))
         bg_rect = pygame.Rect(x, y, width, height)
         fill_rect = pygame.Rect(x, y, int(width * ratio), height)
-        pygame.draw.rect(surface, BAR_BG, bg_rect, border_radius=4)
+        pygame.draw.rect(surface, BAR_BG, bg_rect, border_radius=5)
         if ratio > 0:
-            pygame.draw.rect(surface, fill_color, fill_rect, border_radius=4)
+            pygame.draw.rect(surface, fill_color, fill_rect, border_radius=5)
 
     def draw_panel(self):
         panel_rect = pygame.Rect(MAP_W, 0, PANEL_W, MAP_H)
         pygame.draw.rect(self.canvas, PANEL_BG, panel_rect)
         pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 1)
 
-        x = MAP_W + 16
-        y = 14
+        x = MAP_W + 24
+        card_w = PANEL_W - 48
+        y = 16
 
+        # Top Header
         title_surf = self.font_title.render("BeeLogic Simulation", True, ACCENT)
         self.canvas.blit(title_surf, (x, y))
-        y += 24
-        sub_surf = self.font_small.render("Autonomous Foraging Agent", True, TEXT_MUTED)
+        
+        # Active strategy pill top-right
+        strategy_label = STRATEGY_LABELS[self.strategies[self.strategy_dropdown.selected_idx]].split(" (")[0]
+        strat_pill = self.font_badge.render(strategy_label, True, ACCENT)
+        sp_w = strat_pill.get_width() + 14
+        sp_h = strat_pill.get_height() + 6
+        sp_x = x + card_w - sp_w
+        sp_y = y + 2
+        pygame.draw.rect(self.canvas, ACCENT_LIGHT, (sp_x, sp_y, sp_w, sp_h), border_radius=6)
+        pygame.draw.rect(self.canvas, (191, 219, 254), (sp_x, sp_y, sp_w, sp_h), width=1, border_radius=6)
+        self.canvas.blit(strat_pill, (sp_x + 7, sp_y + 3))
+
+        y += 28
+        sub_surf = self.font_small.render("Autonomous Foraging Agent & AI Reasoning Engine", True, TEXT_MUTED)
         self.canvas.blit(sub_surf, (x, y))
-        y += 22
+        y += 26
+
+        pygame.draw.line(self.canvas, CARD_BORDER, (x, y), (x + card_w, y), 1)
+        y += 12
 
         s = self.bee.status_dict()
 
-        # Card 1: Telemetry
-        card1 = pygame.Rect(x, y, PANEL_W - 32, 150)
-        pygame.draw.rect(self.canvas, CARD_BG, card1, border_radius=8)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card1, width=1, border_radius=8)
+        # ==============================================================
+        # Card 1: Telemetry & Vitals
+        # ==============================================================
+        card1_h = 236
+        card1 = pygame.Rect(x, y, card_w, card1_h)
+        pygame.draw.rect(self.canvas, CARD_BG, card1, border_radius=10)
+        pygame.draw.rect(self.canvas, CARD_BORDER, card1, width=1, border_radius=10)
 
-        cx = x + 12
-        cy = y + 8
-        self.canvas.blit(self.font_bold.render("AGENT STATUS", True, ACCENT), (cx, cy))
-        cy += 20
+        cx = x + 16
+        cy = y + 14
+        self.canvas.blit(self.font_header.render("AGENT TELEMETRY & VITALS", True, ACCENT), (cx, cy))
+        
+        # State tag
+        state_text = getattr(self.bee, 'activity', 'FLYING').upper()
+        if self.bee.finished:
+            state_text = "COMPLETED"
+            state_color = (16, 185, 129)
+        elif self.bee.nectar >= self.bee.max_nectar_capacity:
+            state_text = "RETURNING (FULL)"
+            state_color = (220, 38, 38)
+        elif state_text == "HARVEST":
+            state_text = "HARVESTING"
+            state_color = (234, 88, 12)
+        elif state_text == "DEPOSIT":
+            state_text = "DEPOSITING"
+            state_color = (217, 119, 6)
+        else:
+            state_text = "FORAGING"
+            state_color = ACCENT
 
-        self.canvas.blit(self.font_small.render(f"Energy: {s['energy']}/{s['max_energy']}", True, TEXT_DARK), (cx, cy))
-        self.draw_progress_bar(self.canvas, cx + 120, cy + 2, 160, 11, s['energy'], s['max_energy'], ENERGY_BAR)
-        cy += 18
+        st_surf = self.font_badge.render(state_text, True, (255, 255, 255))
+        st_w = st_surf.get_width() + 12
+        st_h = st_surf.get_height() + 6
+        st_rect = pygame.Rect(x + card_w - st_w - 16, cy - 2, st_w, st_h)
+        pygame.draw.rect(self.canvas, state_color, st_rect, border_radius=6)
+        self.canvas.blit(st_surf, (st_rect.x + 6, st_rect.y + 3))
 
-        self.canvas.blit(self.font_small.render(f"Nectar: {s['nectar']}/{s['max_nectar_capacity']}", True, TEXT_DARK), (cx, cy))
-        self.draw_progress_bar(self.canvas, cx + 120, cy + 2, 160, 11, s['nectar'], s['max_nectar_capacity'], NECTAR_BAR)
-        cy += 20
+        cy += 28
 
-        self.canvas.blit(self.font_small.render(f"Nectar Deposited: {s['total_nectar_collected']}", True, TEXT_DARK), (cx, cy))
-        cy += 18
-        self.canvas.blit(self.font_small.render(f"Distance Travelled: {s['distance']} steps", True, TEXT_DARK), (cx, cy))
-        cy += 18
-        self.canvas.blit(self.font_small.render(f"Flowers Visited: {s['flowers_visited']}", True, TEXT_DARK), (cx, cy))
-        cy += 18
-        self.canvas.blit(self.font_small.render(f"Time Step: {s['time_steps']} / {s['max_steps']}", True, TEXT_DARK), (cx, cy))
+        # Progress bars
+        self.canvas.blit(self.font_body_bold.render("Energy Level:", True, TEXT_DARK), (cx, cy))
+        e_pct = int(s['energy'] / s['max_energy'] * 100)
+        e_val = self.font_body.render(f"{s['energy']}/{s['max_energy']} ({e_pct}%)", True, TEXT_MUTED)
+        self.canvas.blit(e_val, (cx + 120, cy))
+        self.draw_progress_bar(self.canvas, cx + 250, cy + 3, card_w - 280, 16, s['energy'], s['max_energy'], ENERGY_BAR)
+        cy += 26
 
-        y += 158
+        self.canvas.blit(self.font_body_bold.render("Nectar Load:", True, TEXT_DARK), (cx, cy))
+        n_pct = int(s['nectar'] / s['max_nectar_capacity'] * 100)
+        n_val = self.font_body.render(f"{s['nectar']}/{s['max_nectar_capacity']} ({n_pct}%)", True, TEXT_MUTED)
+        self.canvas.blit(n_val, (cx + 120, cy))
+        self.draw_progress_bar(self.canvas, cx + 250, cy + 3, card_w - 280, 16, s['nectar'], s['max_nectar_capacity'], NECTAR_BAR)
+        cy += 30
 
-        # Card 2: Decision Log & Rules
-        card2 = pygame.Rect(x, y, PANEL_W - 32, 135)
-        pygame.draw.rect(self.canvas, CARD_BG, card2, border_radius=8)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card2, width=1, border_radius=8)
+        # 2x2 Metric tiles
+        tile_w = (card_w - 44) // 2
+        tile_h = 52
+        
+        metrics = [
+            ("Nectar Deposited", f"{s['total_nectar_collected']} units", ACCENT),
+            ("Distance Travelled", f"{s['distance']} steps", TEXT_DARK),
+            ("Flowers Visited", f"{s['flowers_visited']} flowers", TEXT_DARK),
+            ("Simulation Step", f"{s['time_steps']} / {s['max_steps']}", TEXT_DARK),
+        ]
 
-        cx = x + 12
-        cy = y + 8
-        self.canvas.blit(self.font_bold.render("DECISION & AI REASONING", True, ACCENT), (cx, cy))
-        cy += 20
+        for i, (m_label, m_val, m_col) in enumerate(metrics):
+            tx_pos = cx + (i % 2) * (tile_w + 12)
+            ty_pos = cy + (i // 2) * (tile_h + 8)
+            t_rect = pygame.Rect(tx_pos, ty_pos, tile_w, tile_h)
+            pygame.draw.rect(self.canvas, (255, 255, 255), t_rect, border_radius=8)
+            pygame.draw.rect(self.canvas, CARD_BORDER, t_rect, width=1, border_radius=8)
+            
+            self.canvas.blit(self.font_badge.render(m_label, True, TEXT_MUTED), (tx_pos + 12, ty_pos + 6))
+            self.canvas.blit(self.font_header.render(m_val, True, m_col), (tx_pos + 12, ty_pos + 24))
+
+        y += card1_h + 14
+
+        # ==============================================================
+        # Card 2: Decision Log & Production Rules
+        # ==============================================================
+        card2_h = 224
+        card2 = pygame.Rect(x, y, card_w, card2_h)
+        pygame.draw.rect(self.canvas, CARD_BG, card2, border_radius=10)
+        pygame.draw.rect(self.canvas, CARD_BORDER, card2, width=1, border_radius=10)
+
+        cx = x + 16
+        cy = y + 14
+        self.canvas.blit(self.font_header.render("DECISION ENGINE & ACTIVE RULES", True, ACCENT), (cx, cy))
+        cy += 28
 
         target_flower = getattr(self.bee, "_target_flower", None)
-        target_str = f"Target: {s['target']} at ({target_flower.x}, {target_flower.y})" if target_flower else f"Target: {s['target'] if s['target'] else 'None'}"
-        self.canvas.blit(self.font.render(target_str, True, TEXT_DARK), (cx, cy))
-        cy += 18
+        if target_flower:
+            target_str = f"Target: Flower #{target_flower.id} at ({target_flower.x}, {target_flower.y}) — Nectar: {target_flower.nectar}"
+            t_col = ACCENT
+        elif s['target'] == "Hive":
+            target_str = f"Target: Hive at ({self.env.hive[0]}, {self.env.hive[1]}) — Depositing Load"
+            t_col = (217, 119, 6)
+        else:
+            target_str = f"Target: {s['target'] if s['target'] else 'None (Simulation Finished)'}"
+            t_col = TEXT_DARK
+
+        self.canvas.blit(self.font_body_bold.render(target_str, True, t_col), (cx, cy))
+        cy += 26
 
         hx, hy = self.env.hive
         bx, by = self.bee.pos
         dist_to_hive = abs(bx - hx) + abs(by - hy)
 
         if self.bee.nectar >= self.bee.max_nectar_capacity:
-            rule_str = "Rule: Full Load (90/90) -> Return to Hive"
+            rule_str = "Active Rule [Capacity Max]: Capacity reached (90/90) -> Return to Hive via A*"
+            rule_bg = (254, 242, 242)
+            rule_border = (252, 165, 165)
             rule_color = (220, 38, 38)
-        elif self.bee.energy <= dist_to_hive:
-            rule_str = "Rule: Low Energy Safety -> Immediate Return"
+        elif self.bee.energy <= dist_to_hive + 2:
+            rule_str = "Active Rule [Safety Reserve]: Energy low -> Immediate emergency return"
+            rule_bg = (254, 242, 242)
+            rule_border = (252, 165, 165)
             rule_color = (220, 38, 38)
         elif self.bee.nectar > 0:
-            rule_str = f"Rule: Partial Capacity ({self.bee.nectar}/90) -> Seeking Next"
-            rule_color = (37, 99, 235)
+            rule_str = f"Active Rule [Partial Load ({self.bee.nectar}/90)]: Seeking optimal nectar source"
+            rule_bg = ACCENT_LIGHT
+            rule_border = (191, 219, 254)
+            rule_color = ACCENT
         else:
-            rule_str = "Rule: Empty Capacity (0/90) -> Seeking First Flower"
-            rule_color = (100, 116, 139)
+            rule_str = "Active Rule [Empty Capacity]: Foraging for initial high-yield flowers"
+            rule_bg = (241, 245, 249)
+            rule_border = CARD_BORDER
+            rule_color = (71, 85, 105)
 
-        self.canvas.blit(self.font_small.render(rule_str, True, rule_color), (cx, cy))
+        r_box = pygame.Rect(cx, cy, card_w - 32, 34)
+        pygame.draw.rect(self.canvas, rule_bg, r_box, border_radius=6)
+        pygame.draw.rect(self.canvas, rule_border, r_box, width=1, border_radius=6)
+        self.canvas.blit(self.font_badge.render(rule_str, True, rule_color), (cx + 10, cy + 8))
+        cy += 42
+
+        self.canvas.blit(self.font_small_bold.render("Reasoning Explanation:", True, TEXT_MUTED), (cx, cy))
         cy += 20
+        self._draw_wrapped(s["reason"], cx, cy, card_w - 36, self.font_small, TEXT_DARK, max_lines=3)
 
-        self.canvas.blit(self.font_bold.render("Reasoning:", True, TEXT_MUTED), (cx, cy))
-        cy += 15
-        self._draw_wrapped(s["reason"], cx, cy, PANEL_W - 56, self.font_small, TEXT_DARK)
+        y += card2_h + 14
 
-        y += 143
+        # ==============================================================
+        # Card 3: Live Candidate Decision Matrix
+        # ==============================================================
+        card3_h = 378
+        card3 = pygame.Rect(x, y, card_w, card3_h)
+        pygame.draw.rect(self.canvas, CARD_BG, card3, border_radius=10)
+        pygame.draw.rect(self.canvas, CARD_BORDER, card3, width=1, border_radius=10)
 
-        # CHANGE 3: Live Candidate Decision Matrix Table
-        card3 = pygame.Rect(x, y, PANEL_W - 32, 180)
-        pygame.draw.rect(self.canvas, CARD_BG, card3, border_radius=8)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card3, width=1, border_radius=8)
-
-        cx = x + 12
-        cy = y + 8
-        self.canvas.blit(self.font_bold.render("CANDIDATE DECISION MATRIX", True, ACCENT), (cx, cy))
-        cy += 20
+        cx = x + 16
+        cy = y + 14
+        self.canvas.blit(self.font_header.render("CANDIDATE DECISION MATRIX", True, ACCENT), (cx, cy))
+        
+        formula_tag = self.font_badge.render("Score = Nectar / (Distance ^ 1.5)", True, TEXT_MUTED)
+        self.canvas.blit(formula_tag, (x + card_w - formula_tag.get_width() - 16, cy + 2))
+        cy += 28
 
         evals = getattr(self.bee, 'evaluations', [])
         if evals:
-            headers = ["ID", "Dist", "Nectar", "Score"]
-            col_x = [cx, cx + 50, cx + 110, cx + 180]
+            headers = ["Flower ID", "Distance", "Nectar", "Heuristic Score", "Decision Status"]
+            col_x = [cx + 8, cx + 100, cx + 200, cx + 310, cx + 440]
+            
+            # Table Header Background
+            th_rect = pygame.Rect(cx, cy, card_w - 32, 28)
+            pygame.draw.rect(self.canvas, (241, 245, 249), th_rect, border_radius=6)
             for hx_pos, h in zip(col_x, headers):
-                self.canvas.blit(self.font_badge.render(h, True, TEXT_MUTED), (hx_pos, cy))
-            cy += 16
-            pygame.draw.line(self.canvas, CARD_BORDER, (cx, cy - 2), (cx + 290, cy - 2), 1)
+                self.canvas.blit(self.font_badge.render(h, True, TEXT_MUTED), (hx_pos, cy + 6))
+            cy += 34
 
-            for cand in evals[:4]:
-                bg_c = (239, 246, 255) if cand.get("selected") else CARD_BG
-                txt_c = ACCENT if cand.get("selected") else TEXT_DARK
+            for rank_idx, cand in enumerate(evals[:6]):
+                is_sel = cand.get("selected", False)
+                bg_c = ACCENT_LIGHT if is_sel else ((255, 255, 255) if rank_idx % 2 == 0 else CARD_BG)
+                border_c = ACCENT if is_sel else CARD_BORDER
+                txt_c = ACCENT if is_sel else TEXT_DARK
                 
-                row_r = pygame.Rect(cx - 2, cy - 2, 294, 18)
-                if cand.get("selected"):
-                    pygame.draw.rect(self.canvas, bg_c, row_r, border_radius=4)
+                row_r = pygame.Rect(cx, cy, card_w - 32, 34)
+                pygame.draw.rect(self.canvas, bg_c, row_r, border_radius=6)
+                pygame.draw.rect(self.canvas, border_c, row_r, width=1, border_radius=6)
 
-                self.canvas.blit(self.font_small.render(f"#{cand['id']}", True, txt_c), (col_x[0], cy))
-                self.canvas.blit(self.font_small.render(f"{cand['dist']} steps", True, txt_c), (col_x[1], cy))
-                self.canvas.blit(self.font_small.render(f"{cand['nectar']}", True, txt_c), (col_x[2], cy))
-                self.canvas.blit(self.font_small.render(f"{cand['score']:.2f}", True, txt_c), (col_x[3], cy))
-                cy += 18
+                self.canvas.blit(self.font_body_bold.render(f"Flower #{cand['id']}", True, txt_c), (col_x[0], cy + 8))
+                self.canvas.blit(self.font_body.render(f"{cand['dist']} steps", True, txt_c), (col_x[1], cy + 8))
+                self.canvas.blit(self.font_body.render(f"{cand['nectar']} units", True, txt_c), (col_x[2], cy + 8))
+                self.canvas.blit(self.font_body.render(f"{cand['score']:.2f}", True, txt_c), (col_x[3], cy + 8))
+                
+                status_str = "★ SELECTED" if is_sel else f"Rank #{rank_idx + 1}"
+                status_surf = self.font_badge.render(status_str, True, (255, 255, 255) if is_sel else TEXT_MUTED)
+                st_w = status_surf.get_width() + 10
+                st_h = status_surf.get_height() + 4
+                st_box = pygame.Rect(col_x[4], cy + 6, st_w, st_h)
+                pygame.draw.rect(self.canvas, ACCENT if is_sel else (226, 232, 240), st_box, border_radius=4)
+                self.canvas.blit(status_surf, (col_x[4] + 5, cy + 8))
+
+                cy += 40
         else:
-            self.canvas.blit(self.font_small.render("No active evaluations (returning or idle)", True, TEXT_MUTED), (cx, cy + 20))
+            empty_msg = "No active evaluations (Bee is currently returning to Hive or idle)"
+            self.canvas.blit(self.font_body.render(empty_msg, True, TEXT_MUTED), (cx + 10, cy + 40))
 
-    def _draw_wrapped(self, text, x, y, max_width, font, color):
+    def _draw_wrapped(self, text, x, y, max_width, font, color, max_lines=3):
         words = text.split(" ")
         line_text = ""
         lines = []
@@ -632,9 +803,9 @@ class BeeLogicApp:
                 line_text = test
         if line_text:
             lines.append(line_text)
-        for i, l in enumerate(lines[:2]):
+        for i, l in enumerate(lines[:max_lines]):
             surf = font.render(l, True, color)
-            self.canvas.blit(surf, (x, y + i * 14))
+            self.canvas.blit(surf, (x, y + i * 20))
 
     def draw_buttons_bar(self):
         bar_rect = pygame.Rect(0, MAP_H, WINDOW_W, BUTTON_BAR_H)
@@ -642,98 +813,152 @@ class BeeLogicApp:
         pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (WINDOW_W, MAP_H), 1)
 
         self.btn_start.active = self.running_sim
+        self.btn_pause.active = not self.running_sim and not self.bee.finished
 
         for b in self.buttons:
-            b.draw(self.canvas, self.font)
+            b.draw(self.canvas, self.font_button)
 
-        self.strategy_dropdown.draw(self.canvas, self.font)
+        self.strategy_dropdown.draw(self.canvas, self.font_button)
+
+        # Bottom Shortcut & Info Line
+        shortcut_text = "Shortcuts: [Space] Start / Pause   |   [R] Reset Simulation   |   [C] Run Benchmark   |   [Esc / Q] Quit Application"
+        self.canvas.blit(self.font_small.render(shortcut_text, True, TEXT_MUTED), (24, 1045))
+        
+        info_text = f"1080p Fullscreen Display Mode   •   Environment Seed: {self.seed}"
+        info_surf = self.font_small.render(info_text, True, TEXT_MUTED)
+        self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1045))
 
     def draw_event_banner(self):
-        text = self.font_bold.render(self.event_banner, True, (255, 255, 255))
-        pad = 10
-        w = text.get_width() + pad * 2
-        h = text.get_height() + pad * 2
-        rect = pygame.Rect((MAP_W - w) // 2, 12, w, h)
-        pygame.draw.rect(self.canvas, (220, 38, 38), rect, border_radius=8)
-        self.canvas.blit(text, (rect.x + pad, rect.y + pad))
+        text = self.font_header.render(self.event_banner, True, (255, 255, 255))
+        pad_x = 24
+        pad_y = 12
+        w = text.get_width() + pad_x * 2
+        h = text.get_height() + pad_y * 2
+        rect = pygame.Rect((MAP_W - w) // 2, 18, w, h)
+        pygame.draw.rect(self.canvas, (220, 38, 38), rect, border_radius=10)
+        pygame.draw.rect(self.canvas, (255, 255, 255), rect, width=1, border_radius=10)
+        self.canvas.blit(text, (rect.x + pad_x, rect.y + pad_y))
 
     def draw_comparison_overlay(self):
         overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
-        overlay.fill((15, 23, 42, 230))
+        overlay.fill((15, 23, 42, 245))
         self.canvas.blit(overlay, (0, 0))
 
-        title = self.font_title.render("Strategy Comparison Results", True, (255, 255, 255))
-        self.canvas.blit(title, (40, 30))
+        # Main Card Box
+        main_box = pygame.Rect(80, 40, 1760, 1000)
+        pygame.draw.rect(self.canvas, (30, 41, 59), main_box, border_radius=16)
+        pygame.draw.rect(self.canvas, (51, 65, 85), main_box, width=1, border_radius=16)
 
-        headers = ["Strategy", "Nectar", "Distance", "Energy", "Flowers", "Steps", "Efficiency"]
-        col_x = [40, 290, 390, 490, 590, 690, 790]
+        title = self.font_hero.render("Strategy Comparison & Performance Benchmark", True, (250, 204, 21))
+        self.canvas.blit(title, (120, 70))
 
-        y = 80
+        sub = self.font_body.render("Real-time empirical evaluation of Nearest Neighbor (BFS), Greedy (Highest Nectar), and Intelligent Weighted A* Search", True, (203, 213, 225))
+        self.canvas.blit(sub, (120, 112))
+
+        headers = ["Strategy", "Nectar Collected", "Distance Travelled", "Energy Consumed", "Flowers Visited", "Time Steps", "Efficiency Ratio"]
+        col_x = [120, 520, 760, 1000, 1220, 1420, 1600]
+
+        y = 160
+        th_box = pygame.Rect(100, y, 1720, 36)
+        pygame.draw.rect(self.canvas, (51, 65, 85), th_box, border_radius=8)
         for cx, h in zip(col_x, headers):
-            surf = self.font_bold.render(h, True, (250, 204, 21))
-            self.canvas.blit(surf, (cx, y))
-        y += 28
-
-        pygame.draw.line(self.canvas, (100, 116, 139), (40, y - 6), (920, y - 6), 1)
+            surf = self.font_header.render(h, True, (250, 204, 21))
+            self.canvas.blit(surf, (cx, y + 6))
+        y += 48
 
         if self.comparison_results:
+            best_eff = max(r["efficiency"] for r in self.comparison_results)
             for r in self.comparison_results:
+                is_winner = (r["efficiency"] == best_eff)
+                row_box = pygame.Rect(100, y, 1720, 42)
+                if is_winner:
+                    pygame.draw.rect(self.canvas, (30, 58, 138), row_box, border_radius=8)
+                    pygame.draw.rect(self.canvas, (96, 165, 250), row_box, width=1, border_radius=8)
+                else:
+                    pygame.draw.rect(self.canvas, (15, 23, 42), row_box, border_radius=8)
+
                 values = [
-                    r["label"],
-                    str(r["nectar_collected"]),
-                    str(r["distance_travelled"]),
-                    str(r["energy_consumed"]),
-                    str(r["flowers_visited"]),
-                    str(r["time_steps"]),
-                    f"{r['efficiency']:.3f}",
+                    r["label"] + (" ★ WINNER" if is_winner else ""),
+                    f"{r['nectar_collected']} units",
+                    f"{r['distance_travelled']} steps",
+                    f"{r['energy_consumed']} units",
+                    f"{r['flowers_visited']} flowers",
+                    f"{r['time_steps']} steps",
+                    f"{r['efficiency']:.3f} (Nectar/Dist)",
                 ]
                 for cx, v in zip(col_x, values):
-                    surf = self.font.render(v, True, (255, 255, 255))
-                    self.canvas.blit(surf, (cx, y))
-                y += 28
+                    txt_color = (255, 255, 255) if not is_winner else (250, 204, 21)
+                    surf = self.font_body_bold.render(v, True, txt_color) if is_winner else self.font_body.render(v, True, txt_color)
+                    self.canvas.blit(surf, (cx, y + 10))
+                y += 50
 
-            y += 15
-            chart_box = pygame.Rect(40, y, 920, 140)
-            pygame.draw.rect(self.canvas, (30, 41, 59), chart_box, border_radius=8)
+            y += 20
+            chart_box = pygame.Rect(100, y, 1720, 240)
+            pygame.draw.rect(self.canvas, (15, 23, 42), chart_box, border_radius=12)
+            pygame.draw.rect(self.canvas, (51, 65, 85), chart_box, width=1, border_radius=12)
             
-            self.canvas.blit(self.font_bold.render("VISUAL EFFICIENCY BENCHMARK", True, (250, 204, 21)), (55, y + 10))
+            self.canvas.blit(self.font_header.render("VISUAL EFFICIENCY BENCHMARK (Nectar Collected / Distance Travelled)", True, (250, 204, 21)), (130, y + 16))
 
             max_eff = max(r["efficiency"] for r in self.comparison_results) or 1.0
-            colors = [(91, 143, 185), (224, 164, 88), (111, 191, 115)]
+            colors = [(91, 143, 185), (224, 164, 88), (52, 211, 153)]
 
-            bar_y = y + 40
+            bar_y = y + 58
             for i, r in enumerate(self.comparison_results):
-                lbl = self.font_small.render(r["label"].split(" (")[0], True, (255, 255, 255))
-                self.canvas.blit(lbl, (55, bar_y))
+                lbl = self.font_body_bold.render(r["label"].split(" (")[0], True, (255, 255, 255))
+                self.canvas.blit(lbl, (130, bar_y + 4))
                 
-                bar_w = int((r["efficiency"] / max_eff) * 550)
-                pygame.draw.rect(self.canvas, (51, 65, 85), (180, bar_y, 550, 16), border_radius=4)
-                pygame.draw.rect(self.canvas, colors[i], (180, bar_y, bar_w, 16), border_radius=4)
+                bar_max_w = 1100
+                bar_w = int((r["efficiency"] / max_eff) * bar_max_w)
+                pygame.draw.rect(self.canvas, (51, 65, 85), (380, bar_y, bar_max_w, 28), border_radius=6)
+                pygame.draw.rect(self.canvas, colors[i], (380, bar_y, bar_w, 28), border_radius=6)
                 
-                eff_txt = self.font_bold.render(f"{r['efficiency']:.3f}", True, (255, 255, 255))
-                self.canvas.blit(eff_txt, (740, bar_y))
-                bar_y += 28
+                eff_txt = self.font_header.render(f"{r['efficiency']:.3f} Nectar/Step", True, (255, 255, 255))
+                self.canvas.blit(eff_txt, (1500, bar_y + 4))
+                bar_y += 48
 
-            y += 155
-            v_box = pygame.Rect(40, y, 920, 95)
-            pygame.draw.rect(self.canvas, (30, 41, 59), v_box, border_radius=8)
-            pygame.draw.rect(self.canvas, (37, 99, 235), v_box, width=1, border_radius=8)
+            y += 260
+            
+            # Two Side-by-Side Breakdown Cards
+            box_w = 845
+            box_h = 160
+            
+            # Card A
+            v_box1 = pygame.Rect(100, y, box_w, box_h)
+            pygame.draw.rect(self.canvas, (15, 23, 42), v_box1, border_radius=12)
+            pygame.draw.rect(self.canvas, (37, 99, 235), v_box1, width=1, border_radius=12)
 
             intel = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_INTELLIGENT)
             greedy = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_GREEDY)
+            nearest = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_NEAREST)
             
             eff_diff = ((intel["efficiency"] - greedy["efficiency"]) / max(0.001, greedy["efficiency"])) * 100
             dist_diff = ((greedy["distance_travelled"] - intel["distance_travelled"]) / max(1, intel["distance_travelled"])) * 100
 
-            self.canvas.blit(self.font_bold.render("PERFORMANCE BREAKDOWN SUMMARY", True, (37, 99, 235)), (55, y + 10))
-            v_text1 = f"• Intelligent Bee achieved {eff_diff:.1f}% higher efficiency than Highest Nectar by avoiding long travels."
+            self.canvas.blit(self.font_header.render("KEY QUANTITATIVE FINDINGS", True, (96, 165, 250)), (130, y + 16))
+            v_text1 = f"• Intelligent Bee achieved +{eff_diff:.1f}% higher efficiency than Highest Nectar (Greedy)."
             v_text2 = f"• Greedy strategy traveled {dist_diff:.1f}% farther due to unweighted heuristic choices."
+            v_text3 = f"• Nearest Neighbor collected fewer total nectar units due to sub-optimal local clustering."
             
-            self.canvas.blit(self.font_small.render(v_text1, True, (226, 232, 240)), (55, y + 36))
-            self.canvas.blit(self.font_small.render(v_text2, True, (226, 232, 240)), (55, y + 58))
+            self.canvas.blit(self.font_body.render(v_text1, True, (226, 232, 240)), (130, y + 50))
+            self.canvas.blit(self.font_body.render(v_text2, True, (226, 232, 240)), (130, y + 80))
+            self.canvas.blit(self.font_body.render(v_text3, True, (226, 232, 240)), (130, y + 110))
 
-        hint = self.font_small.render("Click Start or Reset to return. Chart saved to out/comparison_chart.png. Press F11 for Fullscreen.", True, (148, 163, 184))
-        self.canvas.blit(hint, (40, WINDOW_H - 30))
+            # Card B
+            v_box2 = pygame.Rect(975, y, box_w, box_h)
+            pygame.draw.rect(self.canvas, (15, 23, 42), v_box2, border_radius=12)
+            pygame.draw.rect(self.canvas, (52, 211, 153), v_box2, width=1, border_radius=12)
+
+            self.canvas.blit(self.font_header.render("CLASSICAL AI & DECISION-THEORETIC SUMMARY", True, (52, 211, 153)), (1005, y + 16))
+            c_text1 = "• Production Rules: Capacity threshold (90/90) & energy reserve safety margins."
+            c_text2 = "• Heuristic Formulation: Score = Nectar / (Distance ^ 1.5) balances yield & cost."
+            c_text3 = "• Pathfinding: Optimal obstacle traversal via A* Search and BFS grid exploration."
+
+            self.canvas.blit(self.font_body.render(c_text1, True, (226, 232, 240)), (1005, y + 50))
+            self.canvas.blit(self.font_body.render(c_text2, True, (226, 232, 240)), (1005, y + 80))
+            self.canvas.blit(self.font_body.render(c_text3, True, (226, 232, 240)), (1005, y + 110))
+
+        hint = self.font_body.render("Click anywhere or press [Esc / Space] to return to simulation. Benchmark chart saved to out/comparison_chart.png.", True, (148, 163, 184))
+        self.canvas.blit(hint, (100, 1000))
 
     def draw(self):
         self.canvas.fill(BG)
@@ -747,8 +972,12 @@ class BeeLogicApp:
             self.draw_event_banner()
 
         win_size = self.screen.get_size()
-        scaled_surface = pygame.transform.smoothscale(self.canvas, win_size)
-        self.screen.blit(scaled_surface, (0, 0))
+        if win_size == (self.base_w, self.base_h):
+            self.screen.blit(self.canvas, (0, 0))
+        else:
+            scaled_surface = pygame.transform.smoothscale(self.canvas, win_size)
+            self.screen.blit(scaled_surface, (0, 0))
+        
         pygame.display.flip()
 
     def run(self):

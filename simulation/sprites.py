@@ -14,7 +14,7 @@ import pygame
 class SpriteManager:
     """Loads and manages pixel-art sprites and animated strips for BeeLogic."""
 
-    def __init__(self, base_dir=None, cell_size=36):
+    def __init__(self, base_dir=None, cell_size=64):
         self.cell_size = cell_size
         if base_dir is None:
             # Default to repo root sprites/
@@ -28,7 +28,9 @@ class SpriteManager:
         self._loaded = False
         self.load_all()
 
-    def _load_strip(self, rel_path, num_frames, target_size=(30, 34)):
+    def _load_strip(self, rel_path, num_frames, target_size=None):
+        if target_size is None:
+            target_size = (int(self.cell_size * 0.82), int(self.cell_size * 0.92))
         path = os.path.join(self.base_dir, rel_path)
         img = pygame.image.load(path).convert_alpha()
         w, h = img.get_size()
@@ -44,7 +46,7 @@ class SpriteManager:
         # --------------------------------------------------------------
         # 1. Spring Flowers (1.png to 12.png)
         # --------------------------------------------------------------
-        target_f_size = 28
+        target_f_size = int(self.cell_size * 0.75)
         for i in range(1, 13):
             path = os.path.join(self.base_dir, "SpringFlowers", f"{i}.png")
             img = pygame.image.load(path).convert_alpha()
@@ -69,7 +71,7 @@ class SpriteManager:
         # --------------------------------------------------------------
         # 2. Bee Animations
         # --------------------------------------------------------------
-        bee_size = (30, 34)
+        bee_size = (int(self.cell_size * 0.82), int(self.cell_size * 0.92))
 
         # Flying (6 frames each direction)
         fly_down = self._load_strip(os.path.join("Bee", "Flying", "FlyDown.png"), 6, bee_size)
