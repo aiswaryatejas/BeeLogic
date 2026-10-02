@@ -598,28 +598,6 @@ class BeeLogicApp:
         card_w = PANEL_W - 48
         y = 16
 
-        # Top Header
-        title_surf = self.font_title.render("BeeLogic Simulation", True, (255, 255, 255))
-        self.canvas.blit(title_surf, (x, y))
-        
-        # Active strategy pill top-right
-        strategy_label = STRATEGY_LABELS[self.strategies[self.strategy_dropdown.selected_idx]].split(" (")[0]
-        strat_pill = self.font_badge.render(strategy_label, True, (255, 255, 255))
-        sp_w = strat_pill.get_width() + 14
-        sp_h = strat_pill.get_height() + 6
-        sp_x = x + card_w - sp_w
-        sp_y = y + 2
-        pygame.draw.rect(self.canvas, ACCENT, (sp_x, sp_y, sp_w, sp_h), border_radius=6)
-        self.canvas.blit(strat_pill, (sp_x + 7, sp_y + 3))
-
-        y += 28
-        sub_surf = self.font_small.render("Autonomous Foraging Agent & AI Reasoning Engine", True, (203, 213, 225))
-        self.canvas.blit(sub_surf, (x, y))
-        y += 26
-
-        pygame.draw.line(self.canvas, CARD_BORDER, (x, y), (x + card_w, y), 1)
-        y += 12
-
         s = self.bee.status_dict()
 
         # ==============================================================
@@ -764,7 +742,7 @@ class BeeLogicApp:
         # ==============================================================
         # Card 3: Live Candidate Decision Matrix
         # ==============================================================
-        card3_h = 378
+        card3_h = 440
         card3 = pygame.Rect(x, y, card_w, card3_h)
         self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card3, border_radius=10, border_color=CARD_BORDER, border_width=1)
 
@@ -849,7 +827,7 @@ class BeeLogicApp:
         shortcut_text = "Shortcuts: [Space] Start / Pause   |   [R] Reset Simulation   |   [C] Run Benchmark   |   [Esc / Q] Quit Application"
         self.canvas.blit(self.font_small_bold.render(shortcut_text, True, (248, 250, 252)), (24, 1045))
         
-        info_text = f"1080p Fullscreen Display Mode   •   Environment Seed: {self.seed}"
+        info_text = f"Environment Seed: {self.seed}"
         info_surf = self.font_small_bold.render(info_text, True, (248, 250, 252))
         self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1045))
 
