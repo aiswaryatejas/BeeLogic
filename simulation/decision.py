@@ -68,6 +68,21 @@ class SimulationController:
             bee.reason = "Maximum simulation steps reached"
             return
 
+        # Trigger automated event step if configured
+        if self.event_step is not None and bee.time_steps >= self.event_step and not self.event_triggered:
+            self.trigger_dynamic_event()
+
+        # Check if the bee's target flower became depleted mid-flight
+        if bee._target_flower is not None and not bee._target_flower.is_available():
+            depleted_id = bee._target_flower.id
+            bee.current_path = []
+            bee.current_target = None
+            bee._target_flower = None
+            bee.current_decision = f"Redirecting (Flower #{depleted_id} Depleted)"
+            bee.reason = f"Target Flower #{depleted_id} depleted mid-flight; re-evaluating optimal target"
+            if not bee.finished:
+                self._decide_next_target()
+
         if bee.current_path and len(bee.current_path) > 1:
             bee.step_along_path()
             if len(bee.current_path) == 1:
@@ -77,19 +92,44 @@ class SimulationController:
             if not bee.finished:
                 self._decide_next_target()
 
-    def _trigger_environment_change(self):
+    def trigger_dynamic_event(self, target_flower=None):
+        """
+        Triggers a dynamic event to deplete a flower (target_flower if given,
+        or the flower the bee is currently heading towards, or a random available flower).
+        Immediately re-evaluates and redirects the bee if its target was depleted.
+        """
         self.event_triggered = True
-        flower = self.env.trigger_dynamic_event()
-        if flower is not None:
-            self.event_log = f"Environment changed: Flower {flower.id} became depleted!"
+        
+        # 1. If explicit target_flower provided and available
+        if target_flower is not None and target_flower.is_available():
+            flower = self.env.trigger_dynamic_event(target_flower=target_flower)
+        # 2. If bee is actively pursuing an available flower, prioritize depleting that flower
+        elif self.bee._target_flower is not None and self.bee._target_flower.is_available():
+            flower = self.env.trigger_dynamic_event(target_flower=self.bee._target_flower)
+        # 3. Otherwise pick randomly among available flowers
         else:
-            self.event_log = "Environment changed."
+            flower = self.env.trigger_dynamic_event()
+
+        if flower is not None:
+            self.event_log = f"Dynamic Event: Flower #{flower.id} became depleted!"
+        else:
+            self.event_log = "Dynamic Event: No available flowers to deplete."
 
         bee = self.bee
         if bee._target_flower is not None and not bee._target_flower.is_available():
+            depleted_id = bee._target_flower.id
             bee.current_path = []
             bee.current_target = None
             bee._target_flower = None
+            bee.current_decision = f"Redirecting (Flower #{depleted_id} Depleted)"
+            bee.reason = f"Target Flower #{depleted_id} depleted mid-flight; re-evaluating optimal target"
+            if not bee.finished:
+                self._decide_next_target()
+
+        return flower
+
+    def _trigger_environment_change(self):
+        return self.trigger_dynamic_event()
 
     def _handle_arrival(self):
         bee = self.bee

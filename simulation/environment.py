@@ -130,18 +130,21 @@ class Environment:
     # ------------------------------------------------------------------
     # Dynamic environment change
     # ------------------------------------------------------------------
-    def trigger_dynamic_event(self, rng=None):
+    def trigger_dynamic_event(self, rng=None, target_flower=None):
         """
-        Randomly deplete one currently-available flower to simulate a
-        change in the environment (e.g. another forager emptied it, or
+        Deplete a specific flower or randomly deplete one currently-available flower
+        to simulate a change in the environment (e.g. another forager emptied it, or
         it wilted). Returns the affected Flower, or None if there were
         no available flowers left to affect.
         """
-        rng = rng or random
-        available = self.available_flowers()
-        if not available:
-            return None
-        flower = rng.choice(available)
+        if target_flower is not None and target_flower.is_available():
+            flower = target_flower
+        else:
+            rng = rng or random
+            available = self.available_flowers()
+            if not available:
+                return None
+            flower = rng.choice(available)
         flower.nectar = 0
         flower.depleted = True
         return flower

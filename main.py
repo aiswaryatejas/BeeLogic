@@ -296,9 +296,9 @@ class BeeLogicApp:
                 elif event.key == pygame.K_c:
                     self.run_comparison()
                 elif event.key in (pygame.K_t, pygame.K_e):
-                    flower = self.env.trigger_dynamic_event()
+                    flower = self.controller.trigger_dynamic_event()
                     if flower:
-                        self.event_banner = f"Dynamic Event: Flower #{flower.id} depleted!"
+                        self.event_banner = f"Dynamic Event: Flower #{flower.id} depleted! Bee redirecting..."
                         self.event_banner_timer = 3.5
 
             if event.type in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN):
@@ -333,15 +333,24 @@ class BeeLogicApp:
                     elif self.btn_speed.clicked(pos):
                         self.toggle_speed()
                     elif self.btn_trigger.clicked(pos):
-                        flower = self.env.trigger_dynamic_event()
+                        flower = self.controller.trigger_dynamic_event()
                         if flower:
-                            self.event_banner = f"Dynamic Event: Flower #{flower.id} depleted!"
+                            self.event_banner = f"Dynamic Event: Flower #{flower.id} depleted! Bee redirecting..."
                             self.event_banner_timer = 3.5
                     elif self.btn_compare.clicked(pos):
                         self.run_comparison()
                     elif self.btn_exit.clicked(pos):
                         pygame.quit()
                         sys.exit(0)
+                    elif 0 <= pos[0] < MAP_W and 0 <= pos[1] < MAP_H:
+                        gx = pos[0] // CELL
+                        gy = pos[1] // CELL
+                        clicked_f = self.env.get_flower_at(gx, gy)
+                        if clicked_f is not None and clicked_f.is_available():
+                            flower = self.controller.trigger_dynamic_event(target_flower=clicked_f)
+                            if flower:
+                                self.event_banner = f"Flower #{flower.id} depleted! Bee redirecting..."
+                                self.event_banner_timer = 3.5
 
     def run_comparison(self):
         self.comparison_results = comparison.run_comparison(seed=self.seed, max_steps=400, event_step=45)
