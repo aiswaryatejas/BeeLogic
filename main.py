@@ -507,19 +507,37 @@ class BeeLogicApp:
         # 1. Clear grid surface
         self.grid_surface.fill((0, 0, 0, 0))
 
-        # 2. Solid Grid Canvas with rounded corners
-        pygame.draw.rect(self.grid_surface, BG, (0, 0, MAP_W, MAP_H), border_radius=GRID_RADIUS)
+        # 2. Solid Grass Meadow Canvas
+        grass_grid = self.sprite_mgr.get_grass_grid_surface(GRID_COLS, GRID_ROWS)
+        self.grid_surface.blit(grass_grid, (0, 0))
 
-        # 3. Grid lines
+        # 3. Grid lines (crisp subtle overlay on grass)
+        grid_line_surf = pygame.Surface((MAP_W, MAP_H), pygame.SRCALPHA)
         for gx in range(GRID_COLS + 1):
-            pygame.draw.line(self.grid_surface, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H), 1)
+            pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (gx * CELL, 0), (gx * CELL, MAP_H), 1)
         for gy in range(GRID_ROWS + 1):
-            pygame.draw.line(self.grid_surface, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
+            pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (0, gy * CELL), (MAP_W, gy * CELL), 1)
+        self.grid_surface.blit(grid_line_surf, (0, 0))
 
+        # 4. Obstacles (Stone Sprites)
         for (ox, oy) in self.env.obstacles:
-            r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
-            pygame.draw.rect(self.grid_surface, OBSTACLE, r, border_radius=8)
-            pygame.draw.rect(self.grid_surface, OBSTACLE_BORDER, r, width=1, border_radius=8)
+            cx = ox * CELL + CELL // 2
+            cy = oy * CELL + CELL // 2
+            
+            # Subtle drop shadow under stone
+            sh_w, sh_h = int(CELL * 0.78), int(CELL * 0.28)
+            shadow_surf = pygame.Surface((sh_w, sh_h), pygame.SRCALPHA)
+            pygame.draw.ellipse(shadow_surf, (15, 35, 10, 85), (0, 0, sh_w, sh_h))
+            self.grid_surface.blit(shadow_surf, (cx - sh_w // 2, cy + CELL // 4 - 4))
+            
+            stone_surf = self.sprite_mgr.get_stone_sprite(ox * 7 + oy)
+            if stone_surf:
+                sw, sh = stone_surf.get_size()
+                self.grid_surface.blit(stone_surf, (cx - sw // 2, cy - sh // 2 - 2))
+            else:
+                r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
+                pygame.draw.rect(self.grid_surface, OBSTACLE, r, border_radius=8)
+                pygame.draw.rect(self.grid_surface, OBSTACLE_BORDER, r, width=1, border_radius=8)
 
         if self.bee.current_path and len(self.bee.current_path) > 1:
             points = [(px * CELL + CELL // 2, py * CELL + CELL // 2) for (px, py) in self.bee.current_path]
@@ -560,13 +578,13 @@ class BeeLogicApp:
 
         self.draw_legend(self.grid_surface)
 
-        # 4. Mask the outer corners so all drawn elements adhere cleanly to rounded outer shape
+        # 5. Mask the outer corners so all drawn elements adhere cleanly to rounded outer shape
         self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
-        # 5. Crisp subtle border along rounded outer boundary
+        # 6. Crisp subtle border along rounded outer boundary
         pygame.draw.rect(self.grid_surface, CARD_BORDER, (0, 0, MAP_W, MAP_H), width=1, border_radius=GRID_RADIUS)
 
-        # 6. Blit onto main canvas at spaced offset
+        # 7. Blit onto main canvas at spaced offset
         self.canvas.blit(self.grid_surface, (self.grid_x, self.grid_y))
 
     def draw_legend(self, surface):
@@ -577,6 +595,8 @@ class BeeLogicApp:
 
         flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (20, 20))
         bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (20, 22))
+        stone_sprite = self.sprite_mgr.get_stone_sprite()
+        stone_icon = pygame.transform.scale(stone_sprite, (20, 20)) if stone_sprite else None
 
         lx = 28
         # Hive
@@ -586,7 +606,10 @@ class BeeLogicApp:
         lx += 80
 
         # Obstacle
-        pygame.draw.rect(surface, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
+        if stone_icon:
+            surface.blit(stone_icon, (lx - 3, MAP_H - 40))
+        else:
+            pygame.draw.rect(surface, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
         t = self.font_small.render("Obstacle", True, TEXT_DARK)
         surface.blit(t, (lx + 20, MAP_H - 40))
         lx += 105
