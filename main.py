@@ -201,7 +201,7 @@ class BeeLogicApp:
         self.strategies = [STRATEGY_NEAREST, STRATEGY_GREEDY, STRATEGY_INTELLIGENT]
         self.sim_speed = DEFAULT_SPEED
 
-        self.sprite_mgr = SpriteManager(cell_size=CELL)
+        self.sprite_mgr = SpriteManager(cell_size=CELL, window_size=(WINDOW_W, WINDOW_H))
         self.anim_time = 0.0
 
         self.running_sim = False
@@ -212,6 +212,19 @@ class BeeLogicApp:
 
         self._build_controls()
         self.reset_simulation()
+
+    def draw_glass_rect(self, surface, color_rgba, rect, border_radius=0, border_color=None, border_width=1):
+        """Draws a translucent rectangle with optional border and border radius."""
+        r = pygame.Rect(rect)
+        if len(color_rgba) == 4 and color_rgba[3] < 255:
+            shape_surf = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
+            pygame.draw.rect(shape_surf, color_rgba, (0, 0, r.w, r.h), border_radius=border_radius)
+            surface.blit(shape_surf, (r.x, r.y))
+        else:
+            pygame.draw.rect(surface, color_rgba[:3], r, border_radius=border_radius)
+
+        if border_color and border_width > 0:
+            pygame.draw.rect(surface, border_color, r, width=border_width, border_radius=border_radius)
 
     def _build_controls(self):
         y = MAP_H + 16
@@ -469,10 +482,19 @@ class BeeLogicApp:
         surface.blit(text_surf, (bx + 6, by + 3))
 
     def draw_grid(self):
+        # 1. Solid Grid Canvas (Keeps grid distinct from window backdrop)
+        grid_rect = pygame.Rect(0, 0, MAP_W, MAP_H)
+        pygame.draw.rect(self.canvas, BG, grid_rect)
+
+        # 2. Grid lines
         for gx in range(GRID_COLS + 1):
             pygame.draw.line(self.canvas, GRID_LINE, (gx * CELL, 0), (gx * CELL, MAP_H), 1)
         for gy in range(GRID_ROWS + 1):
             pygame.draw.line(self.canvas, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
+
+        # Grid dividing borders
+        pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 2)
+        pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (MAP_W, MAP_H), 2)
 
         for (ox, oy) in self.env.obstacles:
             r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
@@ -561,30 +583,28 @@ class BeeLogicApp:
 
     def draw_panel(self):
         panel_rect = pygame.Rect(MAP_W, 0, PANEL_W, MAP_H)
-        pygame.draw.rect(self.canvas, PANEL_BG, panel_rect)
-        pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 1)
+        pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 2)
 
         x = MAP_W + 24
         card_w = PANEL_W - 48
         y = 16
 
         # Top Header
-        title_surf = self.font_title.render("BeeLogic Simulation", True, ACCENT)
+        title_surf = self.font_title.render("BeeLogic Simulation", True, (255, 255, 255))
         self.canvas.blit(title_surf, (x, y))
         
         # Active strategy pill top-right
         strategy_label = STRATEGY_LABELS[self.strategies[self.strategy_dropdown.selected_idx]].split(" (")[0]
-        strat_pill = self.font_badge.render(strategy_label, True, ACCENT)
+        strat_pill = self.font_badge.render(strategy_label, True, (255, 255, 255))
         sp_w = strat_pill.get_width() + 14
         sp_h = strat_pill.get_height() + 6
         sp_x = x + card_w - sp_w
         sp_y = y + 2
-        pygame.draw.rect(self.canvas, ACCENT_LIGHT, (sp_x, sp_y, sp_w, sp_h), border_radius=6)
-        pygame.draw.rect(self.canvas, (191, 219, 254), (sp_x, sp_y, sp_w, sp_h), width=1, border_radius=6)
+        pygame.draw.rect(self.canvas, ACCENT, (sp_x, sp_y, sp_w, sp_h), border_radius=6)
         self.canvas.blit(strat_pill, (sp_x + 7, sp_y + 3))
 
         y += 28
-        sub_surf = self.font_small.render("Autonomous Foraging Agent & AI Reasoning Engine", True, TEXT_MUTED)
+        sub_surf = self.font_small.render("Autonomous Foraging Agent & AI Reasoning Engine", True, (203, 213, 225))
         self.canvas.blit(sub_surf, (x, y))
         y += 26
 
@@ -598,8 +618,7 @@ class BeeLogicApp:
         # ==============================================================
         card1_h = 236
         card1 = pygame.Rect(x, y, card_w, card1_h)
-        pygame.draw.rect(self.canvas, CARD_BG, card1, border_radius=10)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card1, width=1, border_radius=10)
+        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card1, border_radius=10, border_color=CARD_BORDER, border_width=1)
 
         cx = x + 16
         cy = y + 14
@@ -675,8 +694,7 @@ class BeeLogicApp:
         # ==============================================================
         card2_h = 224
         card2 = pygame.Rect(x, y, card_w, card2_h)
-        pygame.draw.rect(self.canvas, CARD_BG, card2, border_radius=10)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card2, width=1, border_radius=10)
+        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card2, border_radius=10, border_color=CARD_BORDER, border_width=1)
 
         cx = x + 16
         cy = y + 14
@@ -728,7 +746,7 @@ class BeeLogicApp:
         self.canvas.blit(self.font_badge.render(rule_str, True, rule_color), (cx + 10, cy + 8))
         cy += 42
 
-        self.canvas.blit(self.font_small_bold.render("Reasoning Explanation:", True, TEXT_MUTED), (cx, cy))
+        self.canvas.blit(self.font_small_bold.render("Reasoning Explanation:", True, (100, 116, 139)), (cx, cy))
         cy += 20
         self._draw_wrapped(s["reason"], cx, cy, card_w - 36, self.font_small, TEXT_DARK, max_lines=3)
 
@@ -739,14 +757,13 @@ class BeeLogicApp:
         # ==============================================================
         card3_h = 378
         card3 = pygame.Rect(x, y, card_w, card3_h)
-        pygame.draw.rect(self.canvas, CARD_BG, card3, border_radius=10)
-        pygame.draw.rect(self.canvas, CARD_BORDER, card3, width=1, border_radius=10)
+        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card3, border_radius=10, border_color=CARD_BORDER, border_width=1)
 
         cx = x + 16
         cy = y + 14
         self.canvas.blit(self.font_header.render("CANDIDATE DECISION MATRIX", True, ACCENT), (cx, cy))
         
-        formula_tag = self.font_badge.render("Score = Nectar / (Distance ^ 1.5)", True, TEXT_MUTED)
+        formula_tag = self.font_badge.render("Score = Nectar / (Distance ^ 1.5)", True, (100, 116, 139))
         self.canvas.blit(formula_tag, (x + card_w - formula_tag.get_width() - 16, cy + 2))
         cy += 28
 
@@ -759,12 +776,12 @@ class BeeLogicApp:
             th_rect = pygame.Rect(cx, cy, card_w - 32, 28)
             pygame.draw.rect(self.canvas, (241, 245, 249), th_rect, border_radius=6)
             for hx_pos, h in zip(col_x, headers):
-                self.canvas.blit(self.font_badge.render(h, True, TEXT_MUTED), (hx_pos, cy + 6))
+                self.canvas.blit(self.font_badge.render(h, True, (100, 116, 139)), (hx_pos, cy + 6))
             cy += 34
 
             for rank_idx, cand in enumerate(evals[:6]):
                 is_sel = cand.get("selected", False)
-                bg_c = ACCENT_LIGHT if is_sel else ((255, 255, 255) if rank_idx % 2 == 0 else CARD_BG)
+                bg_c = ACCENT_LIGHT if is_sel else ((255, 255, 255) if rank_idx % 2 == 0 else (248, 250, 252))
                 border_c = ACCENT if is_sel else CARD_BORDER
                 txt_c = ACCENT if is_sel else TEXT_DARK
                 
@@ -778,7 +795,7 @@ class BeeLogicApp:
                 self.canvas.blit(self.font_body.render(f"{cand['score']:.2f}", True, txt_c), (col_x[3], cy + 8))
                 
                 status_str = "★ SELECTED" if is_sel else f"Rank #{rank_idx + 1}"
-                status_surf = self.font_badge.render(status_str, True, (255, 255, 255) if is_sel else TEXT_MUTED)
+                status_surf = self.font_badge.render(status_str, True, (255, 255, 255) if is_sel else (100, 116, 139))
                 st_w = status_surf.get_width() + 10
                 st_h = status_surf.get_height() + 4
                 st_box = pygame.Rect(col_x[4], cy + 6, st_w, st_h)
@@ -788,7 +805,7 @@ class BeeLogicApp:
                 cy += 40
         else:
             empty_msg = "No active evaluations (Bee is currently returning to Hive or idle)"
-            self.canvas.blit(self.font_body.render(empty_msg, True, TEXT_MUTED), (cx + 10, cy + 40))
+            self.canvas.blit(self.font_body.render(empty_msg, True, (100, 116, 139)), (cx + 10, cy + 40))
 
     def _draw_wrapped(self, text, x, y, max_width, font, color, max_lines=3):
         words = text.split(" ")
@@ -809,8 +826,7 @@ class BeeLogicApp:
 
     def draw_buttons_bar(self):
         bar_rect = pygame.Rect(0, MAP_H, WINDOW_W, BUTTON_BAR_H)
-        pygame.draw.rect(self.canvas, PANEL_BG, bar_rect)
-        pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (WINDOW_W, MAP_H), 1)
+        pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (WINDOW_W, MAP_H), 2)
 
         self.btn_start.active = self.running_sim
         self.btn_pause.active = not self.running_sim and not self.bee.finished
@@ -822,10 +838,10 @@ class BeeLogicApp:
 
         # Bottom Shortcut & Info Line
         shortcut_text = "Shortcuts: [Space] Start / Pause   |   [R] Reset Simulation   |   [C] Run Benchmark   |   [Esc / Q] Quit Application"
-        self.canvas.blit(self.font_small.render(shortcut_text, True, TEXT_MUTED), (24, 1045))
+        self.canvas.blit(self.font_small_bold.render(shortcut_text, True, (248, 250, 252)), (24, 1045))
         
         info_text = f"1080p Fullscreen Display Mode   •   Environment Seed: {self.seed}"
-        info_surf = self.font_small.render(info_text, True, TEXT_MUTED)
+        info_surf = self.font_small_bold.render(info_text, True, (248, 250, 252))
         self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1045))
 
     def draw_event_banner(self):
@@ -961,7 +977,11 @@ class BeeLogicApp:
         self.canvas.blit(hint, (100, 1000))
 
     def draw(self):
-        self.canvas.fill(BG)
+        backdrop = self.sprite_mgr.get_backdrop_frame(self.anim_time)
+        if backdrop is not None:
+            self.canvas.blit(backdrop, (0, 0))
+        else:
+            self.canvas.fill(BG)
         
         self.draw_grid()
         self.draw_panel()

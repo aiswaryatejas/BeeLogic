@@ -14,8 +14,9 @@ import pygame
 class SpriteManager:
     """Loads and manages pixel-art sprites and animated strips for BeeLogic."""
 
-    def __init__(self, base_dir=None, cell_size=64):
+    def __init__(self, base_dir=None, cell_size=64, window_size=(1920, 1080)):
         self.cell_size = cell_size
+        self.window_size = window_size
         if base_dir is None:
             # Default to repo root sprites/
             self.base_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sprites")
@@ -25,6 +26,9 @@ class SpriteManager:
         self.flowers = {}
         self.flowers_depleted = {}
         self.bee_anims = {}
+        self.backdrop_frames = []
+        self.backdrop_durations = []
+        self.backdrop_total_duration = 0.0
         self._loaded = False
         self.load_all()
 
@@ -125,7 +129,61 @@ class SpriteManager:
             "up": dep_up,
         }
 
+        # --------------------------------------------------------------
+        # 3. Animated Waterfall Backdrop
+        # --------------------------------------------------------------
+        self.load_backdrop(target_size=self.window_size)
+
         self._loaded = True
+
+    def load_backdrop(self, target_size=(1920, 1080)):
+        """Loads and prepares animated backdrop frames from waterfall.gif."""
+        paths_to_try = [
+            os.path.join(self.base_dir, "waterfall.gif"),
+            os.path.join(self.base_dir, "waterfal.gif"),
+        ]
+        gif_path = None
+        for p in paths_to_try:
+            if os.path.exists(p):
+                gif_path = p
+                break
+
+        self.backdrop_frames = []
+        self.backdrop_durations = []
+        self.backdrop_total_duration = 0.0
+
+        if gif_path:
+            try:
+                from PIL import Image, ImageSequence
+                im = Image.open(gif_path)
+                for frame in ImageSequence.Iterator(im):
+                    rgba = frame.convert("RGBA")
+                    surf = pygame.image.fromstring(rgba.tobytes(), rgba.size, "RGBA")
+                    if target_size and surf.get_size() != target_size:
+                        surf = pygame.transform.smoothscale(surf, target_size)
+                    self.backdrop_frames.append(surf)
+                    dur = frame.info.get("duration", 140) / 1000.0
+                    if dur <= 0:
+                        dur = 0.14
+                    self.backdrop_durations.append(dur)
+                self.backdrop_total_duration = sum(self.backdrop_durations)
+            except Exception as e:
+                print(f"Warning: Could not load animated backdrop GIF '{gif_path}': {e}")
+
+    def get_backdrop_frame(self, anim_time):
+        """Returns the current backdrop frame surface based on elapsed animation time."""
+        if not self.backdrop_frames:
+            return None
+        if self.backdrop_total_duration <= 0:
+            return self.backdrop_frames[0]
+        
+        t = anim_time % self.backdrop_total_duration
+        elapsed = 0.0
+        for frame, dur in zip(self.backdrop_frames, self.backdrop_durations):
+            elapsed += dur
+            if t <= elapsed:
+                return frame
+        return self.backdrop_frames[-1]
 
     def get_flower_sprite(self, flower_id, is_available=True):
         """Returns the flower surface for the given flower id."""
