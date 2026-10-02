@@ -501,10 +501,6 @@ class BeeLogicApp:
         for gy in range(GRID_ROWS + 1):
             pygame.draw.line(self.canvas, GRID_LINE, (0, gy * CELL), (MAP_W, gy * CELL), 1)
 
-        # Grid dividing borders
-        pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 2)
-        pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (MAP_W, MAP_H), 2)
-
         for (ox, oy) in self.env.obstacles:
             r = pygame.Rect(ox * CELL + 4, oy * CELL + 4, CELL - 8, CELL - 8)
             pygame.draw.rect(self.canvas, OBSTACLE, r, border_radius=8)
@@ -591,9 +587,6 @@ class BeeLogicApp:
             pygame.draw.rect(surface, fill_color, fill_rect, border_radius=5)
 
     def draw_panel(self):
-        panel_rect = pygame.Rect(MAP_W, 0, PANEL_W, MAP_H)
-        pygame.draw.line(self.canvas, CARD_BORDER, (MAP_W, 0), (MAP_W, MAP_H), 2)
-
         x = MAP_W + 24
         card_w = PANEL_W - 48
         y = 16
@@ -812,9 +805,6 @@ class BeeLogicApp:
             self.canvas.blit(surf, (x, y + i * 20))
 
     def draw_buttons_bar(self):
-        bar_rect = pygame.Rect(0, MAP_H, WINDOW_W, BUTTON_BAR_H)
-        pygame.draw.line(self.canvas, CARD_BORDER, (0, MAP_H), (WINDOW_W, MAP_H), 2)
-
         self.btn_start.active = self.running_sim
         self.btn_pause.active = not self.running_sim and not self.bee.finished
 
