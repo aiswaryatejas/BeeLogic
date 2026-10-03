@@ -1384,8 +1384,23 @@ class BeeLogicApp:
             draw_text_shadow(self.canvas, c_text2, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 80), (0, 1))
             draw_text_shadow(self.canvas, c_text3, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 110), (0, 1))
 
-        hint_str = "[ Click anywhere or press ESC / SPACE to return to simulation. Benchmark chart saved to out/comparison_chart.png ]"
-        draw_text_shadow(self.canvas, hint_str, self.font_body_bold, (255, 230, 140), (45, 18, 6), (100, 1004), (1, 1))
+        # High-contrast wooden footer prompt bar
+        footer_box = pygame.Rect(100, 960, 1720, 48)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, footer_box, border_radius=8)
+        f_inner = footer_box.inflate(-4, -4)
+        pygame.draw.rect(self.canvas, (105, 52, 20), f_inner, border_radius=6)
+        pygame.draw.line(self.canvas, SV_WOOD_HI, (f_inner.left + 2, f_inner.top + 1), (f_inner.right - 3, f_inner.top + 1), 2)
+        pygame.draw.line(self.canvas, (55, 24, 8), (f_inner.left + 2, f_inner.bottom - 2), (f_inner.right - 3, f_inner.bottom - 2), 2)
+        
+        for rx in [footer_box.left + 16, footer_box.right - 16]:
+            pygame.draw.circle(self.canvas, SV_WOOD_DARK, (rx, footer_box.centery), 5)
+            pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (rx, footer_box.centery), 3)
+
+        hint_str = "Click anywhere or press [ ESC ] / [ SPACE ] to return to simulation  •  Benchmark chart saved to out/comparison_chart.png"
+        hw, hh = self.font_body_bold.size(hint_str)
+        hx = footer_box.centerx - hw // 2
+        hy = footer_box.centery - hh // 2
+        draw_text_shadow(self.canvas, hint_str, self.font_body_bold, (255, 248, 220), (35, 12, 4), (hx, hy), (1, 1))
 
     def draw(self):
         backdrop = self.sprite_mgr.get_backdrop_frame(self.anim_time)
