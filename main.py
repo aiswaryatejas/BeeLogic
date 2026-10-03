@@ -22,7 +22,7 @@ MAP_H = GRID_ROWS * CELL        # 15 * 64 = 960
 
 GRID_X = 24                     # Spacing from left of screen
 GRID_Y = 16                     # Spacing from top of screen
-GRID_RADIUS = 16                # Rounded outer corners
+GRID_RADIUS = 6                 # Rounded outer corners fitting timber frame
 
 WINDOW_W = 1920
 WINDOW_H = 1080
@@ -105,7 +105,7 @@ SV_HIVE_ROOF = (156, 78, 22)
 SV_PATH_LINE = (245, 185, 40)        # Golden pollen trail
 SV_PATH_STEP = (255, 228, 110)
 
-BG = (245, 247, 250)
+BG = (22, 34, 24)
 OBSTACLE = (100, 116, 139)
 OBSTACLE_BORDER = (71, 85, 105)
 
@@ -156,6 +156,45 @@ def draw_stardew_frame(surface, rect, is_inset=False, corner_radius=6):
     
     # 5. Brass Corner Rivets
     rivet_size = 6
+    corners = [
+        (r.left + 5, r.top + 5),
+        (r.right - 5 - rivet_size, r.top + 5),
+        (r.left + 5, r.bottom - 5 - rivet_size),
+        (r.right - 5 - rivet_size, r.bottom - 5 - rivet_size)
+    ]
+    for cx, cy in corners:
+        pygame.draw.rect(surface, SV_WOOD_DARK, (cx, cy, rivet_size, rivet_size))
+        pygame.draw.rect(surface, SV_WOOD_RIVET, (cx + 1, cy + 1, rivet_size - 2, rivet_size - 2))
+        pygame.draw.rect(surface, SV_WOOD_SH, (cx + 2, cy + 2, rivet_size - 4, rivet_size - 4))
+
+
+def draw_stardew_grid_border(surface, grid_rect):
+    """
+    Renders an authentic Stardew Valley timber border framing the meadow grid canvas,
+    matching the aesthetic of HUD cards and menus.
+    """
+    r = pygame.Rect(grid_rect.x - 8, grid_rect.y - 8, grid_rect.w + 16, grid_rect.h + 16)
+    
+    # 1. Outer dark timber border
+    pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=8)
+    
+    # 2. Beveled Golden Wood Frame
+    inner1 = r.inflate(-4, -4)
+    pygame.draw.rect(surface, SV_WOOD_MAIN, inner1, border_radius=6)
+    
+    # Top and left golden oak highlight
+    pygame.draw.line(surface, SV_WOOD_HI, (inner1.left + 2, inner1.top + 1), (inner1.right - 3, inner1.top + 1), 2)
+    pygame.draw.line(surface, SV_WOOD_HI, (inner1.left + 1, inner1.top + 2), (inner1.left + 1, inner1.bottom - 3), 2)
+    # Bottom and right chestnut shadow
+    pygame.draw.line(surface, SV_WOOD_SH, (inner1.left + 2, inner1.bottom - 2), (inner1.right - 3, inner1.bottom - 2), 2)
+    pygame.draw.line(surface, SV_WOOD_SH, (inner1.right - 2, inner1.top + 2), (inner1.right - 2, inner1.bottom - 3), 2)
+    
+    # 3. Inner dark boundary outline enclosing the meadow
+    inner2 = inner1.inflate(-10, -10)
+    pygame.draw.rect(surface, SV_WOOD_DARK, inner2, border_radius=4)
+    
+    # 4. Brass Corner Rivets
+    rivet_size = 7
     corners = [
         (r.left + 5, r.top + 5),
         (r.right - 5 - rivet_size, r.top + 5),
@@ -841,8 +880,13 @@ class BeeLogicApp:
         # 5. Mask outer corners
         self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
-        # 6. Blit onto main canvas at spaced offset
+        # 6. Draw timber frame border and blit meadow canvas
+        grid_rect = pygame.Rect(self.grid_x, self.grid_y, MAP_W, MAP_H)
+        draw_stardew_grid_border(self.canvas, grid_rect)
         self.canvas.blit(self.grid_surface, (self.grid_x, self.grid_y))
+        
+        # 7. Subtle inner dark rim ensuring seamless grass-to-frame boundary
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, grid_rect, width=2, border_radius=GRID_RADIUS)
 
     def draw_legend(self, surface):
         leg_w, leg_h = 440, 42
