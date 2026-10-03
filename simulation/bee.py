@@ -17,6 +17,9 @@ class Bee:
     def __init__(self, hive_pos, max_energy=180, max_nectar_capacity=90, max_steps=400):
         self.hive_pos = hive_pos
         self.pos = hive_pos
+        self.prev_pos = hive_pos
+        self.facing = "right"          # "down", "left", "right", "up"
+        self.activity = "idle"         # "fly", "idle", "harvest", "deposit"
 
         self.max_energy = max_energy
         self.energy = max_energy
@@ -50,6 +53,19 @@ class Bee:
             return False
 
         next_cell = self.current_path[1]
+        dx = next_cell[0] - self.pos[0]
+        dy = next_cell[1] - self.pos[1]
+        if dx > 0:
+            self.facing = "right"
+        elif dx < 0:
+            self.facing = "left"
+        elif dy > 0:
+            self.facing = "down"
+        elif dy < 0:
+            self.facing = "up"
+        self.activity = "fly"
+
+        self.prev_pos = self.pos
         self.pos = next_cell
         self.current_path.pop(0)
 
@@ -64,6 +80,7 @@ class Bee:
     # Harvesting / depositing
     # ------------------------------------------------------------------
     def harvest_flower(self, flower):
+        self.activity = "harvest"
         capacity_left = self.max_nectar_capacity - self.nectar
         taken = flower.harvest(capacity_left)
         self.nectar += taken
@@ -72,6 +89,7 @@ class Bee:
         return taken
 
     def deposit_at_hive(self):
+        self.activity = "deposit"
         self.total_nectar_collected += self.nectar
         self.nectar = 0
         self.energy = self.max_energy  # recharge fully at the hive

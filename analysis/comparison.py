@@ -12,9 +12,18 @@ Can be run standalone:
 or imported and called from main.py when the user clicks
 "Run Comparison" inside the Pygame app.
 """
-from environment import Environment
-from bee import Bee
-from decision import (
+import os
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path when running standalone
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from simulation.environment import Environment
+from simulation.bee import Bee
+from simulation.decision import (
     SimulationController,
     STRATEGY_NEAREST,
     STRATEGY_GREEDY,
@@ -73,11 +82,15 @@ def print_table(results):
         )
 
 
-def save_chart(results, path="comparison_chart.png"):
+def save_chart(results, path="out/comparison_chart.png"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
+
+    out_dir = os.path.dirname(path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
 
     labels = [r["label"] for r in results]
     nectar = [r["nectar_collected"] for r in results]
