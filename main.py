@@ -33,66 +33,269 @@ PANEL_W = WINDOW_W - PANEL_X - 24 # 1920 - 1324 - 24 = 572
 
 DEFAULT_SPEED = 3.0
 
-# Academic & Modern UI Palette
+# ==============================================================
+# Stardew Valley Aesthetic Palette & Styling Tokens
+# ==============================================================
+# Timber / Wood Frame
+SV_WOOD_DARK = (54, 26, 12)          # Outer frame outline / deep timber
+SV_WOOD_MAIN = (194, 118, 48)        # Warm golden timber base
+SV_WOOD_HI = (238, 172, 88)          # Top/left golden oak highlight
+SV_WOOD_SH = (122, 58, 20)           # Bottom/right rich chestnut shadow
+SV_WOOD_RIVET = (255, 215, 115)      # Brass / gold corner rivets
+SV_WOOD_HEADER = (80, 42, 18)        # Dark walnut banner / table header
+SV_WOOD_INNER_BORDER = (74, 38, 16)  # Frame separator border
+
+# Parchment Canvas
+SV_PARCHMENT = (251, 238, 198)       # Creamy warm parchment fill
+SV_PARCHMENT_LIGHT = (254, 246, 222) # Bright cream ledger row
+SV_PARCHMENT_DARK = (235, 212, 164)  # Inner parchment shadow
+SV_PARCHMENT_INSET = (228, 202, 152) # Recessed item slot fill
+SV_INSET_SHADOW = (186, 154, 108)    # 3D shadow for recessed slots
+SV_INSET_HI = (255, 246, 226)        # 3D highlight for recessed slots
+
+# Ink & Typography
+SV_TEXT_DARK = (64, 30, 12)          # Deep chocolate ink (main text)
+SV_TEXT_MUTED = (128, 82, 45)        # Sepia / warm muted brown
+SV_TEXT_TITLE = (145, 68, 14)        # Warm carved wood header title
+SV_TEXT_LIGHT = (255, 248, 235)      # Cream text on wood/buttons
+SV_TEXT_SHADOW = (50, 24, 10)        # Drop shadow for cream text
+SV_TEXT_HI_SHADOW = (255, 245, 220)  # Highlight shadow for dark text on parchment
+
+# Harvest & Vitals Accents
+SV_ENERGY_MAIN = (92, 186, 44)       # Vibrant Stardew grass green
+SV_ENERGY_HI = (165, 235, 95)        # Glossy top highlight
+SV_ENERGY_SH = (48, 125, 20)         # Bottom shade
+
+SV_NECTAR_MAIN = (245, 168, 28)      # Golden honey / starfruit amber
+SV_NECTAR_HI = (255, 228, 110)       # Glossy top highlight
+SV_NECTAR_SH = (185, 112, 14)        # Bottom shade
+
+SV_GOLD_STAR = (255, 210, 50)        # Stardew Gold Star highlight
+SV_GOLD_WINNER = (245, 195, 75)      # Winner row highlight in benchmark
+SV_GOLD_BORDER = (195, 130, 25)
+
+# Button Colors
+SV_BTN_NORMAL_FILL = (208, 128, 48)
+SV_BTN_NORMAL_HI = (244, 178, 92)
+SV_BTN_NORMAL_SH = (132, 64, 20)
+
+SV_BTN_HOVER_FILL = (235, 155, 62)
+SV_BTN_HOVER_HI = (255, 208, 120)
+SV_BTN_HOVER_SH = (156, 82, 26)
+
+SV_BTN_ACTIVE_FILL = (68, 148, 54)   # Harvest green when running
+SV_BTN_ACTIVE_HI = (112, 196, 92)
+SV_BTN_ACTIVE_SH = (38, 94, 28)
+
+SV_BTN_PAUSE_FILL = (214, 140, 42)   # Amber wood for pause
+SV_BTN_PAUSE_HI = (248, 188, 88)
+SV_BTN_PAUSE_SH = (138, 72, 18)
+
+SV_BTN_DANGER_FILL = (185, 45, 38)   # Crimson red wood
+SV_BTN_DANGER_HI = (228, 82, 75)
+SV_BTN_DANGER_SH = (118, 25, 20)
+
+SV_BTN_BENCH_FILL = (120, 60, 160)   # Royal starfruit purple / violet wood
+SV_BTN_BENCH_HI = (160, 95, 210)
+SV_BTN_BENCH_SH = (75, 35, 105)
+
+# Hive & Meadow accents
+SV_HIVE_FILL = (232, 148, 38)
+SV_HIVE_ROOF = (156, 78, 22)
+SV_PATH_LINE = (245, 185, 40)        # Golden pollen trail
+SV_PATH_STEP = (255, 228, 110)
+
 BG = (245, 247, 250)
-GRID_LINE = (226, 232, 240)
 OBSTACLE = (100, 116, 139)
 OBSTACLE_BORDER = (71, 85, 105)
 
-HIVE_COLOR = (245, 158, 11)
-HIVE_BORDER = (180, 83, 9)
 
-PATH_COLOR = (147, 197, 253)
-PATH_LINE_COLOR = (37, 99, 235)
-TARGET_HIGHLIGHT = (245, 158, 11)
+def draw_text_shadow(surface, text, font, color, shadow_color, pos, offset=(1, 1)):
+    """Renders text with a 1px shadow for classic retro/tactile game UI."""
+    x, y = pos
+    s_surf = font.render(text, True, shadow_color)
+    surface.blit(s_surf, (x + offset[0], y + offset[1]))
+    t_surf = font.render(text, True, color)
+    surface.blit(t_surf, (x, y))
+    return t_surf.get_width(), t_surf.get_height()
 
-PANEL_BG = (255, 255, 255)
-CARD_BG = (248, 250, 252)
-CARD_BORDER = (226, 232, 240)
-TEXT_DARK = (15, 23, 42)
-TEXT_MUTED = (100, 116, 139)
-ACCENT = (37, 99, 235)
-ACCENT_LIGHT = (239, 246, 255)
 
-BUTTON_BG = (255, 255, 255)
-BUTTON_BORDER = (203, 213, 225)
-BUTTON_HOVER = (241, 245, 249)
-BUTTON_ACTIVE = (37, 99, 235)
+def draw_stardew_frame(surface, rect, is_inset=False, corner_radius=6):
+    """
+    Renders an authentic Stardew Valley menu window/card:
+    Heavy timber outer frame, 3D golden bevels, inner dark border, warm parchment canvas,
+    and brass corner rivets.
+    """
+    r = pygame.Rect(rect)
+    # 1. Outer dark timber border
+    pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=corner_radius)
+    
+    # 2. Beveled Wood Frame
+    inner1 = r.inflate(-4, -4)
+    pygame.draw.rect(surface, SV_WOOD_MAIN, inner1, border_radius=max(2, corner_radius - 2))
+    
+    # Top and left golden oak highlight
+    pygame.draw.line(surface, SV_WOOD_HI, (inner1.left + 2, inner1.top + 1), (inner1.right - 3, inner1.top + 1), 2)
+    pygame.draw.line(surface, SV_WOOD_HI, (inner1.left + 1, inner1.top + 2), (inner1.left + 1, inner1.bottom - 3), 2)
+    # Bottom and right chestnut shadow
+    pygame.draw.line(surface, SV_WOOD_SH, (inner1.left + 2, inner1.bottom - 2), (inner1.right - 3, inner1.bottom - 2), 2)
+    pygame.draw.line(surface, SV_WOOD_SH, (inner1.right - 2, inner1.top + 2), (inner1.right - 2, inner1.bottom - 3), 2)
+    
+    # 3. Inner dark line
+    inner2 = inner1.inflate(-10, -10)
+    pygame.draw.rect(surface, SV_WOOD_DARK, inner2, border_radius=max(2, corner_radius - 3))
+    
+    # 4. Parchment background
+    inner3 = inner2.inflate(-2, -2)
+    bg_color = SV_PARCHMENT if not is_inset else SV_PARCHMENT_INSET
+    pygame.draw.rect(surface, bg_color, inner3, border_radius=max(1, corner_radius - 4))
+    
+    # Inner parchment shadow (top and left)
+    pygame.draw.line(surface, SV_PARCHMENT_DARK, (inner3.left, inner3.top), (inner3.right - 1, inner3.top), 2)
+    pygame.draw.line(surface, SV_PARCHMENT_DARK, (inner3.left, inner3.top), (inner3.left, inner3.bottom - 1), 2)
+    
+    # 5. Brass Corner Rivets
+    rivet_size = 6
+    corners = [
+        (r.left + 5, r.top + 5),
+        (r.right - 5 - rivet_size, r.top + 5),
+        (r.left + 5, r.bottom - 5 - rivet_size),
+        (r.right - 5 - rivet_size, r.bottom - 5 - rivet_size)
+    ]
+    for cx, cy in corners:
+        pygame.draw.rect(surface, SV_WOOD_DARK, (cx, cy, rivet_size, rivet_size))
+        pygame.draw.rect(surface, SV_WOOD_RIVET, (cx + 1, cy + 1, rivet_size - 2, rivet_size - 2))
+        pygame.draw.rect(surface, SV_WOOD_SH, (cx + 2, cy + 2, rivet_size - 4, rivet_size - 4))
 
-BAR_BG = (226, 232, 240)
-ENERGY_BAR = (34, 197, 94)
-NECTAR_BAR = (249, 115, 22)
+
+def draw_stardew_slot(surface, rect):
+    """Renders a 3D recessed parchment item slot / telemetry tile."""
+    r = pygame.Rect(rect)
+    pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=4)
+    inner = r.inflate(-2, -2)
+    pygame.draw.rect(surface, SV_PARCHMENT_INSET, inner, border_radius=3)
+    # Recessed shadow top/left
+    pygame.draw.line(surface, SV_INSET_SHADOW, (inner.left, inner.top), (inner.right - 1, inner.top), 2)
+    pygame.draw.line(surface, SV_INSET_SHADOW, (inner.left, inner.top), (inner.left, inner.bottom - 1), 2)
+    # Recessed highlight bottom/right
+    pygame.draw.line(surface, SV_INSET_HI, (inner.left, inner.bottom - 1), (inner.right - 1, inner.bottom - 1), 1)
+    pygame.draw.line(surface, SV_INSET_HI, (inner.right - 1, inner.top), (inner.right - 1, inner.bottom - 1), 1)
+
+
+def draw_stardew_bar(surface, x, y, width, height, current, max_val, bar_type='energy'):
+    """
+    Renders an iconic Stardew Valley gauge bar with wooden casing,
+    deep recessed soil groove, and 3D glossy highlight fill.
+    """
+    r = pygame.Rect(x, y, width, height)
+    # Outer dark casing
+    pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=5)
+    # Inner dark groove
+    groove = r.inflate(-4, -4)
+    pygame.draw.rect(surface, (68, 38, 18), groove, border_radius=3)
+    # Fill
+    ratio = min(1.0, max(0.0, current / max(1, max_val)))
+    if ratio > 0:
+        fill_w = max(4, int(groove.w * ratio))
+        fill_rect = pygame.Rect(groove.x, groove.y, fill_w, groove.h)
+        if bar_type == 'energy':
+            c_main = SV_ENERGY_MAIN
+            c_hi = SV_ENERGY_HI
+            c_sh = SV_ENERGY_SH
+        else: # nectar
+            c_main = SV_NECTAR_MAIN
+            c_hi = SV_NECTAR_HI
+            c_sh = SV_NECTAR_SH
+        
+        pygame.draw.rect(surface, c_main, fill_rect, border_radius=3)
+        # 3D gloss line on top
+        pygame.draw.line(surface, c_hi, (fill_rect.left + 1, fill_rect.top + 1), (fill_rect.right - 2, fill_rect.top + 1), 2)
+        # 3D shadow on bottom
+        pygame.draw.line(surface, c_sh, (fill_rect.left + 1, fill_rect.bottom - 2), (fill_rect.right - 2, fill_rect.bottom - 2), 2)
 
 
 class Button:
-    def __init__(self, rect, label, is_danger=False):
+    def __init__(self, rect, label, is_danger=False, is_benchmark=False):
         self.rect = pygame.Rect(rect)
         self.label = label
         self.is_danger = is_danger
+        self.is_benchmark = is_benchmark
         self.active = False
         self.hovered = False
 
     def draw(self, surface, font):
+        r = self.rect
         if self.active:
-            bg = (29, 78, 216) if self.hovered else BUTTON_ACTIVE
-            border = (30, 64, 175)
-            text_color = (255, 255, 255)
+            c_fill = SV_BTN_ACTIVE_FILL
+            c_hi = SV_BTN_ACTIVE_HI
+            c_sh = SV_BTN_ACTIVE_SH
+            t_col = (255, 255, 255)
+            s_col = (24, 60, 18)
         elif self.is_danger:
-            bg = (220, 38, 38) if self.hovered else (254, 242, 242)
-            border = (239, 68, 68) if self.hovered else (252, 165, 165)
-            text_color = (255, 255, 255) if self.hovered else (185, 28, 28)
+            if self.hovered:
+                c_fill = (215, 60, 52)
+                c_hi = (245, 110, 105)
+                c_sh = (140, 32, 26)
+            else:
+                c_fill = SV_BTN_DANGER_FILL
+                c_hi = SV_BTN_DANGER_HI
+                c_sh = SV_BTN_DANGER_SH
+            t_col = (255, 248, 240)
+            s_col = (54, 15, 12)
+        elif self.is_benchmark:
+            if self.hovered:
+                c_fill = (145, 75, 190)
+                c_hi = (185, 120, 235)
+                c_sh = (95, 45, 130)
+            else:
+                c_fill = SV_BTN_BENCH_FILL
+                c_hi = SV_BTN_BENCH_HI
+                c_sh = SV_BTN_BENCH_SH
+            t_col = (255, 248, 240)
+            s_col = (45, 18, 65)
+        elif self.hovered:
+            c_fill = SV_BTN_HOVER_FILL
+            c_hi = SV_BTN_HOVER_HI
+            c_sh = SV_BTN_HOVER_SH
+            t_col = (255, 255, 245)
+            s_col = (54, 26, 12)
         else:
-            bg = BUTTON_HOVER if self.hovered else BUTTON_BG
-            border = ACCENT if self.hovered else BUTTON_BORDER
-            text_color = ACCENT if self.hovered else TEXT_DARK
+            c_fill = SV_BTN_NORMAL_FILL
+            c_hi = SV_BTN_NORMAL_HI
+            c_sh = SV_BTN_NORMAL_SH
+            t_col = (255, 250, 235)
+            s_col = (54, 26, 12)
 
-        pygame.draw.rect(surface, bg, self.rect, border_radius=10)
-        pygame.draw.rect(surface, border, self.rect, width=1, border_radius=10)
+        # Draw outer dark outline
+        pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=6)
         
-        text = font.render(self.label, True, text_color)
-        tx = self.rect.x + (self.rect.w - text.get_width()) // 2
-        ty = self.rect.y + (self.rect.h - text.get_height()) // 2
-        surface.blit(text, (tx, ty))
+        # Inner wood fill
+        b_inner = r.inflate(-4, -4)
+        pygame.draw.rect(surface, c_fill, b_inner, border_radius=4)
+        
+        # 3D Bevel
+        if self.active:
+            # Inset pressed bevel
+            pygame.draw.line(surface, c_sh, (b_inner.left + 1, b_inner.top + 1), (b_inner.right - 2, b_inner.top + 1), 2)
+            pygame.draw.line(surface, c_sh, (b_inner.left + 1, b_inner.top + 1), (b_inner.left + 1, b_inner.bottom - 2), 2)
+            pygame.draw.line(surface, c_hi, (b_inner.left + 1, b_inner.bottom - 2), (b_inner.right - 2, b_inner.bottom - 2), 2)
+            pygame.draw.line(surface, c_hi, (b_inner.right - 2, b_inner.top + 1), (b_inner.right - 2, b_inner.bottom - 2), 2)
+        else:
+            # Raised button bevel
+            pygame.draw.line(surface, c_hi, (b_inner.left + 1, b_inner.top + 1), (b_inner.right - 2, b_inner.top + 1), 2)
+            pygame.draw.line(surface, c_hi, (b_inner.left + 1, b_inner.top + 1), (b_inner.left + 1, b_inner.bottom - 2), 2)
+            pygame.draw.line(surface, c_sh, (b_inner.left + 1, b_inner.bottom - 2), (b_inner.right - 2, b_inner.bottom - 2), 2)
+            pygame.draw.line(surface, c_sh, (b_inner.right - 2, b_inner.top + 1), (b_inner.right - 2, b_inner.bottom - 2), 2)
+
+        # Label with Stardew text shadow
+        tw = font.size(self.label)[0]
+        th = font.size(self.label)[1]
+        tx = r.x + (r.w - tw) // 2
+        ty = r.y + (r.h - th) // 2
+        if self.active:
+            tx += 1
+            ty += 1
+        draw_text_shadow(surface, self.label, font, t_col, s_col, (tx, ty), (1, 2))
 
     def update_hover(self, pos):
         self.hovered = self.rect.collidepoint(pos)
@@ -108,64 +311,81 @@ class Dropdown:
         self.selected_idx = selected_idx
         self.is_open = False
         self.hovered_option = -1
-        self.item_height = 50
+        self.item_height = 48
 
     def draw(self, surface, font):
-        pygame.draw.rect(surface, BUTTON_BG, self.rect, border_radius=10)
-        pygame.draw.rect(surface, ACCENT if self.is_open else BUTTON_BORDER, self.rect, width=1, border_radius=10)
+        r = self.rect
+        # Outer dark timber
+        pygame.draw.rect(surface, SV_WOOD_DARK, r, border_radius=6)
+        inner = r.inflate(-4, -4)
+        pygame.draw.rect(surface, SV_PARCHMENT, inner, border_radius=4)
         
+        # 3D inner inset
+        pygame.draw.line(surface, SV_PARCHMENT_DARK, (inner.left, inner.top), (inner.right - 1, inner.top), 2)
+        pygame.draw.line(surface, SV_PARCHMENT_DARK, (inner.left, inner.top), (inner.left, inner.bottom - 1), 2)
+
         label = self.options[self.selected_idx][1]
-        text = font.render(label, True, TEXT_DARK)
-        surface.blit(text, (self.rect.x + 16, self.rect.y + (self.rect.h - text.get_height()) // 2))
+        draw_text_shadow(surface, label, font, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (r.x + 16, r.y + (r.h - font.get_height()) // 2), (0, 1))
 
-        arrow_color = ACCENT if self.is_open else TEXT_MUTED
-        ax = self.rect.right - 20
-        ay = self.rect.centery
+        # Wooden arrow button on the right
+        btn_w = 40
+        btn_r = pygame.Rect(r.right - btn_w - 4, r.top + 4, btn_w, r.h - 8)
+        pygame.draw.rect(surface, SV_WOOD_DARK, btn_r, border_radius=4)
+        btn_inner = btn_r.inflate(-2, -2)
+        pygame.draw.rect(surface, SV_WOOD_MAIN, btn_inner, border_radius=3)
+        pygame.draw.line(surface, SV_WOOD_HI, (btn_inner.left, btn_inner.top), (btn_inner.right - 1, btn_inner.top), 1)
+        pygame.draw.line(surface, SV_WOOD_HI, (btn_inner.left, btn_inner.top), (btn_inner.left, btn_inner.bottom - 1), 1)
+        pygame.draw.line(surface, SV_WOOD_SH, (btn_inner.left, btn_inner.bottom - 1), (btn_inner.right - 1, btn_inner.bottom - 1), 1)
+        pygame.draw.line(surface, SV_WOOD_SH, (btn_inner.right - 1, btn_inner.top), (btn_inner.right - 1, btn_inner.bottom - 1), 1)
+
+        ax = btn_r.centerx
+        ay = btn_r.centery
         if self.is_open:
-            pygame.draw.polygon(surface, arrow_color, [(ax - 6, ay + 3), (ax + 6, ay + 3), (ax, ay - 4)])
+            pygame.draw.polygon(surface, (255, 235, 160), [(ax - 6, ay + 4), (ax + 6, ay + 4), (ax, ay - 4)])
+            pygame.draw.polygon(surface, SV_WOOD_DARK, [(ax - 6, ay + 4), (ax + 6, ay + 4), (ax, ay - 4)], 1)
         else:
-            pygame.draw.polygon(surface, arrow_color, [(ax - 6, ay - 3), (ax + 6, ay - 3), (ax, ay + 4)])
+            pygame.draw.polygon(surface, (255, 235, 160), [(ax - 6, ay - 4), (ax + 6, ay - 4), (ax, ay + 4)])
+            pygame.draw.polygon(surface, SV_WOOD_DARK, [(ax - 6, ay - 4), (ax + 6, ay - 4), (ax, ay + 4)], 1)
 
         if self.is_open:
-            menu_h = len(self.options) * self.item_height
-            menu_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6, self.rect.w, menu_h)
+            menu_h = len(self.options) * self.item_height + 12
+            menu_rect = pygame.Rect(r.x, r.y - menu_h - 4, r.w, menu_h)
             
-            # Shadow
-            shadow_rect = menu_rect.inflate(4, 4)
-            shadow_surf = pygame.Surface((shadow_rect.w, shadow_rect.h), pygame.SRCALPHA)
-            pygame.draw.rect(shadow_surf, (15, 23, 42, 40), (0, 0, shadow_rect.w, shadow_rect.h), border_radius=12)
-            surface.blit(shadow_surf, (shadow_rect.x, shadow_rect.y + 2))
-
-            pygame.draw.rect(surface, BUTTON_BG, menu_rect, border_radius=10)
-            pygame.draw.rect(surface, ACCENT, menu_rect, width=1, border_radius=10)
+            # Draw Stardew frame for popup menu
+            draw_stardew_frame(surface, menu_rect, is_inset=False, corner_radius=6)
 
             for i, (_, opt_label) in enumerate(self.options):
-                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
+                opt_rect = pygame.Rect(menu_rect.x + 8, menu_rect.y + 6 + (i * self.item_height), menu_rect.w - 16, self.item_height - 2)
                 if i == self.hovered_option:
-                    pygame.draw.rect(surface, BUTTON_HOVER, opt_rect, border_radius=8)
-                if i == self.selected_idx:
-                    pygame.draw.rect(surface, ACCENT_LIGHT, opt_rect, border_radius=8)
-                
-                txt_color = ACCENT if i == self.selected_idx else TEXT_DARK
-                t = font.render(opt_label, True, txt_color)
-                surface.blit(t, (opt_rect.x + 16, opt_rect.y + (opt_rect.h - t.get_height()) // 2))
+                    pygame.draw.rect(surface, SV_BTN_HOVER_FILL, opt_rect, border_radius=4)
+                    pygame.draw.rect(surface, SV_WOOD_DARK, opt_rect, width=1, border_radius=4)
+                    draw_text_shadow(surface, opt_label, font, (255, 255, 245), SV_WOOD_DARK, (opt_rect.x + 12, opt_rect.y + (opt_rect.h - font.get_height()) // 2), (1, 1))
+                elif i == self.selected_idx:
+                    pygame.draw.rect(surface, (245, 195, 85), opt_rect, border_radius=4)
+                    pygame.draw.rect(surface, (190, 125, 25), opt_rect, width=1, border_radius=4)
+                    draw_text_shadow(surface, opt_label, font, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (opt_rect.x + 12, opt_rect.y + (opt_rect.h - font.get_height()) // 2), (0, 1))
+                else:
+                    draw_text_shadow(surface, opt_label, font, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (opt_rect.x + 12, opt_rect.y + (opt_rect.h - font.get_height()) // 2), (0, 1))
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION and self.is_open:
-            menu_h = len(self.options) * self.item_height
+            menu_h = len(self.options) * self.item_height + 12
+            menu_y = self.rect.y - menu_h - 4
             for i in range(len(self.options)):
-                opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
+                opt_rect = pygame.Rect(self.rect.x + 8, menu_y + 6 + (i * self.item_height), self.rect.w - 16, self.item_height - 2)
                 if opt_rect.collidepoint(event.pos):
                     self.hovered_option = i
                     return
+            self.hovered_option = -1
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self.is_open = not self.is_open
                 return True
             if self.is_open:
-                menu_h = len(self.options) * self.item_height
+                menu_h = len(self.options) * self.item_height + 12
+                menu_y = self.rect.y - menu_h - 4
                 for i in range(len(self.options)):
-                    opt_rect = pygame.Rect(self.rect.x, self.rect.y - menu_h - 6 + (i * self.item_height), self.rect.w, self.item_height)
+                    opt_rect = pygame.Rect(self.rect.x + 8, menu_y + 6 + (i * self.item_height), self.rect.w - 16, self.item_height - 2)
                     if opt_rect.collidepoint(event.pos):
                         self.selected_idx = i
                         self.is_open = False
@@ -251,8 +471,8 @@ class BeeLogicApp:
         self.strategy_dropdown = Dropdown((384, y, 330, h), dropdown_options, selected_idx=2)
         
         self.btn_speed = Button((724, y, 160, h), f"Speed: {self.sim_speed:.1f}x")
-        self.btn_trigger = Button((894, y, 240, h), "Deplete Flower")
-        self.btn_compare = Button((1144, y, 270, h), "Run Benchmark (C)")
+        self.btn_trigger = Button((894, y, 240, h), "Deplete Flower", is_danger=False)
+        self.btn_compare = Button((1144, y, 270, h), "Run Benchmark (C)", is_benchmark=True)
         self.btn_exit = Button((1770, y, 126, h), "Quit (Esc)", is_danger=True)
         
         self.buttons = [
@@ -410,26 +630,38 @@ class BeeLogicApp:
         surface.blit(sprite, (center_x - sw // 2, center_y - sh // 2))
 
         if is_available:
-            # Persistent Flower ID Badge above flower
+            # Stardew wooden garden stake / parchment tag above flower
             if flower_id is not None:
-                id_tag = self.font_badge.render(f"#{flower_id}", True, ACCENT)
-                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL + 2))
+                id_txt = f"#{flower_id}"
+                id_surf = self.font_badge.render(id_txt, True, SV_TEXT_DARK)
+                pw = id_surf.get_width() + 8
+                ph = id_surf.get_height() + 2
+                px = center_x - pw // 2
+                py = y * CELL + 2
+                pygame.draw.rect(surface, SV_WOOD_DARK, (px, py, pw, ph), border_radius=3)
+                pygame.draw.rect(surface, (252, 240, 205), (px + 1, py + 1, pw - 2, ph - 2), border_radius=2)
+                draw_text_shadow(surface, id_txt, self.font_badge, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (px + 4, py + 1), (0, 1))
 
-            # Nectar count pill badge at bottom
-            num_surf = self.font_badge.render(str(nectar), True, (255, 255, 255))
-            pw = num_surf.get_width() + 10
-            ph = num_surf.get_height() + 4
+            # Golden honey droplet badge at bottom
+            pw = self.font_badge.size(str(nectar))[0] + 10
+            ph = self.font_badge.size(str(nectar))[1] + 4
             px = center_x - pw // 2
             py = y * CELL + CELL - ph - 2
-            pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            pygame.draw.rect(pill_bg, (15, 23, 42, 220), (0, 0, pw, ph), border_radius=6)
-            surface.blit(pill_bg, (px, py))
-            surface.blit(num_surf, (px + 5, py + 2))
+            pygame.draw.rect(surface, SV_WOOD_DARK, (px, py, pw, ph), border_radius=6)
+            pygame.draw.rect(surface, SV_NECTAR_MAIN, (px + 1, py + 1, pw - 2, ph - 2), border_radius=5)
+            pygame.draw.line(surface, SV_NECTAR_HI, (px + 2, py + 2), (px + pw - 3, py + 2), 1)
+            draw_text_shadow(surface, str(nectar), self.font_badge, (255, 255, 245), (70, 35, 10), (px + 5, py + 2), (1, 1))
         else:
             if flower_id is not None:
-                id_tag = self.font_badge.render(f"#{flower_id}", True, (148, 163, 184))
-                surface.blit(id_tag, (center_x - id_tag.get_width() // 2, y * CELL + 2))
-            d_tag = self.font_badge.render("0", True, (148, 163, 184))
+                id_txt = f"#{flower_id}"
+                id_surf = self.font_badge.render(id_txt, True, (140, 110, 85))
+                pw = id_surf.get_width() + 8
+                ph = id_surf.get_height() + 2
+                px = center_x - pw // 2
+                py = y * CELL + 2
+                pygame.draw.rect(surface, (140, 110, 85), (px, py, pw, ph), width=1, border_radius=3)
+                surface.blit(id_surf, (px + 4, py + 1))
+            d_tag = self.font_badge.render("0", True, (140, 110, 85))
             surface.blit(d_tag, (center_x - d_tag.get_width() // 2, y * CELL + CELL - 18))
 
     def draw_bee(self, surface, x, y):
@@ -465,34 +697,42 @@ class BeeLogicApp:
         bh = frame.get_height()
         surface.blit(frame, (int(cx - bw // 2), int(cy - bh // 2 - 2)))
 
-        # On-Bee Capacity Badge
+        # Stardew Wooden Plaque / Parchment Scroll above Bee
         current_load = self.bee.nectar
         max_cap = self.bee.max_nectar_capacity
 
         if self.bee.finished:
             badge_str = f"[{current_load}/{max_cap} FINISHED]"
-            badge_bg = (16, 185, 129)
+            badge_bg = (235, 185, 35) # starfruit gold
+            text_color = SV_TEXT_DARK
         elif current_load >= max_cap:
             badge_str = f"[{current_load}/{max_cap} FULL -> RETURNING]"
-            badge_bg = (220, 38, 38)
+            badge_bg = SV_BTN_DANGER_FILL # crimson ruby
+            text_color = (255, 255, 255)
         elif action == "harvest":
             badge_str = f"[{current_load}/{max_cap} HARVESTING]"
-            badge_bg = (234, 88, 12)
+            badge_bg = (220, 125, 25) # autumn amber
+            text_color = (255, 255, 255)
         elif action == "deposit":
             badge_str = f"[{current_load}/{max_cap} DEPOSITING]"
-            badge_bg = (217, 119, 6)
+            badge_bg = (210, 135, 30) # golden oak
+            text_color = (255, 255, 255)
         elif current_load > 0:
-            badge_str = f"[{current_load}/{max_cap} SEARCHING]"
-            badge_bg = (37, 99, 235)
+            badge_str = f"[{current_load}/{max_cap} FORAGING]"
+            badge_bg = SV_BTN_ACTIVE_FILL # spring green
+            text_color = (255, 255, 255)
         else:
             badge_str = f"[{current_load}/{max_cap} EMPTY]"
-            badge_bg = (100, 116, 139)
+            badge_bg = (245, 230, 190) # warm parchment
+            text_color = SV_TEXT_DARK
 
-        text_surf = self.font_badge.render(badge_str, True, (255, 255, 255))
+        tw = self.font_badge.size(badge_str)[0]
+        th = self.font_badge.size(badge_str)[1]
+        bw_badge = tw + 14
+        bh_badge = th + 6
+
         bx = int(cx + 26)
         by = int(cy - 28)
-        bw_badge = text_surf.get_width() + 12
-        bh_badge = text_surf.get_height() + 6
 
         if bx + bw_badge > MAP_W:
             bx = int(cx - bw_badge - 26)
@@ -500,8 +740,12 @@ class BeeLogicApp:
             by = int(cy + 22)
 
         badge_rect = pygame.Rect(bx, by, bw_badge, bh_badge)
-        pygame.draw.rect(surface, badge_bg, badge_rect, border_radius=6)
-        surface.blit(text_surf, (bx + 6, by + 3))
+        pygame.draw.rect(surface, SV_WOOD_DARK, badge_rect, border_radius=5)
+        pygame.draw.rect(surface, badge_bg, badge_rect.inflate(-2, -2), border_radius=4)
+        if text_color == (255, 255, 255):
+            draw_text_shadow(surface, badge_str, self.font_badge, text_color, (50, 20, 8), (bx + 7, by + 3), (1, 1))
+        else:
+            draw_text_shadow(surface, badge_str, self.font_badge, text_color, SV_TEXT_HI_SHADOW, (bx + 7, by + 3), (0, 1))
 
     def draw_grid(self):
         # 1. Clear grid surface
@@ -514,9 +758,9 @@ class BeeLogicApp:
         # 3. Grid lines (crisp subtle overlay on grass)
         grid_line_surf = pygame.Surface((MAP_W, MAP_H), pygame.SRCALPHA)
         for gx in range(1, GRID_COLS):
-            pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (gx * CELL, 0), (gx * CELL, MAP_H), 1)
+            pygame.draw.line(grid_line_surf, (255, 255, 255, 40), (gx * CELL, 0), (gx * CELL, MAP_H), 1)
         for gy in range(1, GRID_ROWS):
-            pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (0, gy * CELL), (MAP_W, gy * CELL), 1)
+            pygame.draw.line(grid_line_surf, (255, 255, 255, 40), (0, gy * CELL), (MAP_W, gy * CELL), 1)
         self.grid_surface.blit(grid_line_surf, (0, 0))
 
         # 4. Obstacles (Stone Sprites)
@@ -539,36 +783,52 @@ class BeeLogicApp:
                 pygame.draw.rect(self.grid_surface, OBSTACLE, r, border_radius=8)
                 pygame.draw.rect(self.grid_surface, OBSTACLE_BORDER, r, width=1, border_radius=8)
 
+        # Bee path: warm golden pollen trail
         if self.bee.current_path and len(self.bee.current_path) > 1:
             points = [(px * CELL + CELL // 2, py * CELL + CELL // 2) for (px, py) in self.bee.current_path]
-            pygame.draw.lines(self.grid_surface, PATH_LINE_COLOR, False, points, 5)
+            pygame.draw.lines(self.grid_surface, (230, 160, 20), False, points, 5)
+            pygame.draw.lines(self.grid_surface, (255, 220, 80), False, points, 2)
             for (px, py) in self.bee.current_path:
-                r = self.cell_rect(px, py).inflate(-40, -40)
-                pygame.draw.rect(self.grid_surface, PATH_COLOR, r, border_radius=6)
+                r = self.cell_rect(px, py).inflate(-44, -44)
+                pygame.draw.rect(self.grid_surface, (255, 230, 110), r, border_radius=4)
 
+        # Cozy Stardew Apiary / Hive Structure
         hx, hy = self.env.hive
         hive_rect = pygame.Rect(hx * CELL + 4, hy * CELL + 4, CELL - 8, CELL - 8)
-        pygame.draw.rect(self.grid_surface, HIVE_COLOR, hive_rect, border_radius=10)
-        pygame.draw.rect(self.grid_surface, HIVE_BORDER, hive_rect, width=2, border_radius=10)
-        label = self.font_badge.render("HIVE", True, (255, 255, 255))
-        self.grid_surface.blit(label, (hive_rect.x + (hive_rect.w - label.get_width()) // 2, hive_rect.y + (hive_rect.h - label.get_height()) // 2))
+        pygame.draw.rect(self.grid_surface, SV_WOOD_DARK, hive_rect, border_radius=8)
+        inner_h = hive_rect.inflate(-4, -4)
+        pygame.draw.rect(self.grid_surface, SV_HIVE_FILL, inner_h, border_radius=6)
+        # Wooden slats
+        pygame.draw.line(self.grid_surface, SV_WOOD_SH, (inner_h.left, inner_h.centery - 6), (inner_h.right - 1, inner_h.centery - 6), 2)
+        pygame.draw.line(self.grid_surface, SV_WOOD_SH, (inner_h.left, inner_h.centery + 6), (inner_h.right - 1, inner_h.centery + 6), 2)
+        # Entrance slot
+        ent_r = pygame.Rect(inner_h.centerx - 12, inner_h.bottom - 10, 24, 6)
+        pygame.draw.rect(self.grid_surface, SV_WOOD_DARK, ent_r, border_radius=2)
+        # Sign label
+        label = self.font_badge.render("HIVE", True, SV_TEXT_DARK)
+        sign_r = pygame.Rect(hive_rect.centerx - label.get_width() // 2 - 4, hive_rect.top + 5, label.get_width() + 8, label.get_height() + 2)
+        pygame.draw.rect(self.grid_surface, SV_WOOD_DARK, sign_r, border_radius=3)
+        pygame.draw.rect(self.grid_surface, SV_PARCHMENT, sign_r.inflate(-2, -2), border_radius=2)
+        draw_text_shadow(self.grid_surface, "HIVE", self.font_badge, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (sign_r.x + 4, sign_r.y + 1), (0, 1))
 
-        # Glowing Target Outline & Badge
+        # Glowing Target Outline & Ribbon Badge
         target_flower = getattr(self.bee, "_target_flower", None)
         if target_flower is not None:
             r = self.cell_rect(target_flower.x, target_flower.y)
-            pygame.draw.rect(self.grid_surface, TARGET_HIGHLIGHT, r.inflate(8, 8), width=3, border_radius=10)
+            pygame.draw.rect(self.grid_surface, (245, 175, 25), r.inflate(8, 8), width=3, border_radius=10)
             
             tf_id = getattr(target_flower, 'id', 'Target')
-            lbl = self.font_badge.render(f"TARGET #{tf_id}", True, (234, 88, 12))
-            pw = lbl.get_width() + 10
-            ph = lbl.get_height() + 4
+            lbl_text = f"★ TARGET #{tf_id} ★"
+            lbl_w = self.font_badge.size(lbl_text)[0]
+            lbl_h = self.font_badge.size(lbl_text)[1]
+            pw = lbl_w + 12
+            ph = lbl_h + 4
             px = r.x + (CELL - pw) // 2
-            py = r.y - ph - 2
-            pill_bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            pygame.draw.rect(pill_bg, (254, 243, 199, 230), (0, 0, pw, ph), border_radius=4)
-            self.grid_surface.blit(pill_bg, (px, py))
-            self.grid_surface.blit(lbl, (px + 5, py + 2))
+            py = r.y - ph - 4
+            pill_rect = pygame.Rect(px, py, pw, ph)
+            pygame.draw.rect(self.grid_surface, SV_WOOD_DARK, pill_rect, border_radius=4)
+            pygame.draw.rect(self.grid_surface, (254, 240, 205), pill_rect.inflate(-2, -2), border_radius=3)
+            draw_text_shadow(self.grid_surface, lbl_text, self.font_badge, (180, 85, 15), SV_TEXT_HI_SHADOW, (px + 6, py + 2), (0, 1))
 
         for f in self.env.flowers:
             self.draw_flower(self.grid_surface, f.x, f.y, f.nectar, f.is_available(), flower_id=f.id)
@@ -578,57 +838,64 @@ class BeeLogicApp:
 
         self.draw_legend(self.grid_surface)
 
-        # 5. Mask the outer corners so all drawn elements adhere cleanly to rounded outer shape
+        # 5. Mask outer corners
         self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
         # 6. Blit onto main canvas at spaced offset
         self.canvas.blit(self.grid_surface, (self.grid_x, self.grid_y))
 
     def draw_legend(self, surface):
-        leg_w, leg_h = 440, 38
-        leg_rect = pygame.Rect(16, MAP_H - 50, leg_w, leg_h)
-        pygame.draw.rect(surface, (255, 255, 255, 235), leg_rect, border_radius=8)
-        pygame.draw.rect(surface, CARD_BORDER, leg_rect, width=1, border_radius=8)
+        leg_w, leg_h = 440, 42
+        leg_rect = pygame.Rect(16, MAP_H - 56, leg_w, leg_h)
+        
+        # Stardew wooden notice plank
+        pygame.draw.rect(surface, SV_WOOD_DARK, leg_rect, border_radius=6)
+        plank = leg_rect.inflate(-4, -4)
+        pygame.draw.rect(surface, SV_PARCHMENT, plank, border_radius=4)
+        
+        # 3D inner bevel
+        pygame.draw.line(surface, SV_PARCHMENT_DARK, (plank.left, plank.top), (plank.right - 1, plank.top), 2)
+        pygame.draw.line(surface, SV_PARCHMENT_DARK, (plank.left, plank.top), (plank.left, plank.bottom - 1), 2)
+        pygame.draw.line(surface, SV_INSET_HI, (plank.left, plank.bottom - 1), (plank.right - 1, plank.bottom - 1), 1)
 
-        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (20, 20))
-        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (20, 22))
+        # Corner rivets
+        for cx, cy in [(leg_rect.left + 5, leg_rect.top + 5), (leg_rect.right - 9, leg_rect.top + 5),
+                       (leg_rect.left + 5, leg_rect.bottom - 9), (leg_rect.right - 9, leg_rect.bottom - 9)]:
+            pygame.draw.rect(surface, SV_WOOD_DARK, (cx, cy, 4, 4))
+            pygame.draw.rect(surface, SV_WOOD_RIVET, (cx + 1, cy + 1, 2, 2))
+
+        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (22, 22))
+        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (22, 24))
         stone_sprite = self.sprite_mgr.get_stone_sprite()
-        stone_icon = pygame.transform.scale(stone_sprite, (20, 20)) if stone_sprite else None
+        stone_icon = pygame.transform.scale(stone_sprite, (22, 22)) if stone_sprite else None
 
         lx = 28
         # Hive
-        pygame.draw.rect(surface, HIVE_COLOR, (lx, MAP_H - 37, 14, 14), border_radius=3)
-        t = self.font_small.render("Hive", True, TEXT_DARK)
-        surface.blit(t, (lx + 20, MAP_H - 40))
-        lx += 80
+        hive_box = pygame.Rect(lx, MAP_H - 43, 16, 16)
+        pygame.draw.rect(surface, SV_HIVE_FILL, hive_box, border_radius=3)
+        pygame.draw.rect(surface, SV_WOOD_DARK, hive_box, width=1, border_radius=3)
+        draw_text_shadow(surface, "Hive", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 22, MAP_H - 44), (0, 1))
+        lx += 85
 
         # Obstacle
         if stone_icon:
-            surface.blit(stone_icon, (lx - 3, MAP_H - 40))
+            surface.blit(stone_icon, (lx - 2, MAP_H - 46))
         else:
-            pygame.draw.rect(surface, OBSTACLE, (lx, MAP_H - 37, 14, 14), border_radius=3)
-        t = self.font_small.render("Obstacle", True, TEXT_DARK)
-        surface.blit(t, (lx + 20, MAP_H - 40))
-        lx += 105
+            pygame.draw.rect(surface, (100, 116, 139), (lx, MAP_H - 43, 16, 16), border_radius=3)
+        draw_text_shadow(surface, "Obstacle", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 24, MAP_H - 44), (0, 1))
+        lx += 110
 
         # Flower
-        surface.blit(flower_icon, (lx, MAP_H - 41))
-        t = self.font_small.render("Flower", True, TEXT_DARK)
-        surface.blit(t, (lx + 26, MAP_H - 40))
-        lx += 95
+        surface.blit(flower_icon, (lx, MAP_H - 46))
+        draw_text_shadow(surface, "Flower", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 28, MAP_H - 44), (0, 1))
+        lx += 100
 
         # Bee
-        surface.blit(bee_icon, (lx, MAP_H - 42))
-        t = self.font_small.render("Bee", True, TEXT_DARK)
-        surface.blit(t, (lx + 26, MAP_H - 40))
+        surface.blit(bee_icon, (lx, MAP_H - 48))
+        draw_text_shadow(surface, "Bee", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 28, MAP_H - 44), (0, 1))
 
     def draw_progress_bar(self, surface, x, y, width, height, current, max_val, fill_color):
-        ratio = min(1.0, max(0.0, current / max_val))
-        bg_rect = pygame.Rect(x, y, width, height)
-        fill_rect = pygame.Rect(x, y, int(width * ratio), height)
-        pygame.draw.rect(surface, BAR_BG, bg_rect, border_radius=5)
-        if ratio > 0:
-            pygame.draw.rect(surface, fill_color, fill_rect, border_radius=5)
+        draw_stardew_bar(surface, x, y, width, height, current, max_val, bar_type='energy')
 
     def draw_panel(self):
         x = PANEL_X
@@ -642,74 +909,91 @@ class BeeLogicApp:
         # ==============================================================
         card1_h = 236
         card1 = pygame.Rect(x, y, card_w, card1_h)
-        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card1, border_radius=10, border_color=CARD_BORDER, border_width=1)
+        draw_stardew_frame(self.canvas, card1, is_inset=False, corner_radius=8)
 
-        cx = x + 16
-        cy = y + 14
-        self.canvas.blit(self.font_header.render("AGENT TELEMETRY & VITALS", True, ACCENT), (cx, cy))
-        
-        # State tag
+        cx = x + 18
+        cy = y + 16
+        draw_text_shadow(self.canvas, "AGENT TELEMETRY & VITALS", self.font_header, SV_TEXT_TITLE, SV_TEXT_HI_SHADOW, (cx, cy), (0, 1))
+
+        # State badge
         state_text = getattr(self.bee, 'activity', 'FLYING').upper()
         if self.bee.finished:
             state_text = "COMPLETED"
-            state_color = (16, 185, 129)
+            st_bg = (235, 185, 35) # starfruit gold
+            st_fg = SV_TEXT_DARK
         elif self.bee.nectar >= self.bee.max_nectar_capacity:
             state_text = "RETURNING (FULL)"
-            state_color = (220, 38, 38)
+            st_bg = SV_BTN_DANGER_FILL
+            st_fg = (255, 255, 255)
         elif state_text == "HARVEST":
             state_text = "HARVESTING"
-            state_color = (234, 88, 12)
+            st_bg = (220, 125, 25)
+            st_fg = (255, 255, 255)
         elif state_text == "DEPOSIT":
             state_text = "DEPOSITING"
-            state_color = (217, 119, 6)
+            st_bg = (210, 135, 30)
+            st_fg = (255, 255, 255)
         else:
             state_text = "FORAGING"
-            state_color = ACCENT
+            st_bg = SV_BTN_ACTIVE_FILL
+            st_fg = (255, 255, 255)
 
-        st_surf = self.font_badge.render(state_text, True, (255, 255, 255))
-        st_w = st_surf.get_width() + 12
-        st_h = st_surf.get_height() + 6
-        st_rect = pygame.Rect(x + card_w - st_w - 16, cy - 2, st_w, st_h)
-        pygame.draw.rect(self.canvas, state_color, st_rect, border_radius=6)
-        self.canvas.blit(st_surf, (st_rect.x + 6, st_rect.y + 3))
+        st_w = self.font_badge.size(state_text)[0] + 16
+        st_h = self.font_badge.size(state_text)[1] + 6
+        st_rect = pygame.Rect(x + card_w - st_w - 20, cy - 2, st_w, st_h)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, st_rect, border_radius=4)
+        pygame.draw.rect(self.canvas, st_bg, st_rect.inflate(-2, -2), border_radius=3)
+        if st_fg == (255, 255, 255):
+            draw_text_shadow(self.canvas, state_text, self.font_badge, st_fg, (50, 20, 10), (st_rect.x + 8, st_rect.y + 3), (1, 1))
+        else:
+            draw_text_shadow(self.canvas, state_text, self.font_badge, st_fg, SV_TEXT_HI_SHADOW, (st_rect.x + 8, st_rect.y + 3), (0, 1))
 
+        cy += 32
+
+        # Progress bars with Stardew [E] and [N] icon tiles
+        e_icon_rect = pygame.Rect(cx, cy + 1, 20, 20)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, e_icon_rect, border_radius=4)
+        pygame.draw.rect(self.canvas, SV_ENERGY_MAIN, e_icon_rect.inflate(-2, -2), border_radius=3)
+        draw_text_shadow(self.canvas, "E", self.font_small_bold, (255, 255, 255), (20, 50, 10), (cx + 5, cy + 2), (1, 1))
+
+        draw_text_shadow(self.canvas, "Energy Level:", self.font_body_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (cx + 28, cy), (0, 1))
+        e_pct = int(s['energy'] / s['max_energy'] * 100)
+        e_val = f"{s['energy']} / {s['max_energy']} ({e_pct}%)"
+        self.canvas.blit(self.font_small.render(e_val, True, SV_TEXT_MUTED), (cx + 138, cy + 1))
+        draw_stardew_bar(self.canvas, cx + 265, cy + 2, card_w - 305, 18, s['energy'], s['max_energy'], 'energy')
         cy += 28
 
-        # Progress bars
-        self.canvas.blit(self.font_body_bold.render("Energy Level:", True, TEXT_DARK), (cx, cy))
-        e_pct = int(s['energy'] / s['max_energy'] * 100)
-        e_val = self.font_body.render(f"{s['energy']}/{s['max_energy']} ({e_pct}%)", True, TEXT_MUTED)
-        self.canvas.blit(e_val, (cx + 120, cy))
-        self.draw_progress_bar(self.canvas, cx + 250, cy + 3, card_w - 280, 16, s['energy'], s['max_energy'], ENERGY_BAR)
-        cy += 26
+        n_icon_rect = pygame.Rect(cx, cy + 1, 20, 20)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, n_icon_rect, border_radius=4)
+        pygame.draw.rect(self.canvas, SV_NECTAR_MAIN, n_icon_rect.inflate(-2, -2), border_radius=3)
+        draw_text_shadow(self.canvas, "N", self.font_small_bold, (255, 255, 255), (60, 25, 6), (cx + 4, cy + 2), (1, 1))
 
-        self.canvas.blit(self.font_body_bold.render("Nectar Load:", True, TEXT_DARK), (cx, cy))
+        draw_text_shadow(self.canvas, "Nectar Load:", self.font_body_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (cx + 28, cy), (0, 1))
         n_pct = int(s['nectar'] / s['max_nectar_capacity'] * 100)
-        n_val = self.font_body.render(f"{s['nectar']}/{s['max_nectar_capacity']} ({n_pct}%)", True, TEXT_MUTED)
-        self.canvas.blit(n_val, (cx + 120, cy))
-        self.draw_progress_bar(self.canvas, cx + 250, cy + 3, card_w - 280, 16, s['nectar'], s['max_nectar_capacity'], NECTAR_BAR)
-        cy += 30
+        n_val = f"{s['nectar']} / {s['max_nectar_capacity']} ({n_pct}%)"
+        self.canvas.blit(self.font_small.render(n_val, True, SV_TEXT_MUTED), (cx + 138, cy + 1))
+        draw_stardew_bar(self.canvas, cx + 265, cy + 2, card_w - 305, 18, s['nectar'], s['max_nectar_capacity'], 'nectar')
+        cy += 32
 
-        # 2x2 Metric tiles
-        tile_w = (card_w - 44) // 2
+        # 2x2 Inset Item Slots / Metric Tiles
+        tile_w = (card_w - 48) // 2
         tile_h = 52
         
         metrics = [
-            ("Nectar Deposited", f"{s['total_nectar_collected']} units", ACCENT),
-            ("Distance Travelled", f"{s['distance']} steps", TEXT_DARK),
-            ("Flowers Visited", f"{s['flowers_visited']} flowers", TEXT_DARK),
-            ("Simulation Step", f"{s['time_steps']} / {s['max_steps']}", TEXT_DARK),
+            ("Nectar Deposited", f"{s['total_nectar_collected']} units", (180, 85, 12)),
+            ("Distance Travelled", f"{s['distance']} steps", SV_TEXT_DARK),
+            ("Flowers Visited", f"{s['flowers_visited']} flowers", SV_TEXT_DARK),
+            ("Simulation Step", f"{s['time_steps']} / {s['max_steps']}", SV_TEXT_DARK),
         ]
 
         for i, (m_label, m_val, m_col) in enumerate(metrics):
             tx_pos = cx + (i % 2) * (tile_w + 12)
             ty_pos = cy + (i // 2) * (tile_h + 8)
             t_rect = pygame.Rect(tx_pos, ty_pos, tile_w, tile_h)
-            pygame.draw.rect(self.canvas, (255, 255, 255), t_rect, border_radius=8)
-            pygame.draw.rect(self.canvas, CARD_BORDER, t_rect, width=1, border_radius=8)
+            draw_stardew_slot(self.canvas, t_rect)
             
-            self.canvas.blit(self.font_badge.render(m_label, True, TEXT_MUTED), (tx_pos + 12, ty_pos + 6))
-            self.canvas.blit(self.font_header.render(m_val, True, m_col), (tx_pos + 12, ty_pos + 24))
+            self.canvas.blit(self.font_badge.render(m_label, True, SV_TEXT_MUTED), (tx_pos + 12, ty_pos + 6))
+            draw_text_shadow(self.canvas, m_val, self.font_header, m_col, SV_TEXT_HI_SHADOW, (tx_pos + 12, ty_pos + 24), (0, 1))
 
         y += card1_h + 14
 
@@ -718,26 +1002,26 @@ class BeeLogicApp:
         # ==============================================================
         card2_h = 224
         card2 = pygame.Rect(x, y, card_w, card2_h)
-        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card2, border_radius=10, border_color=CARD_BORDER, border_width=1)
+        draw_stardew_frame(self.canvas, card2, is_inset=False, corner_radius=8)
 
-        cx = x + 16
-        cy = y + 14
-        self.canvas.blit(self.font_header.render("DECISION ENGINE & ACTIVE RULES", True, ACCENT), (cx, cy))
-        cy += 28
+        cx = x + 18
+        cy = y + 16
+        draw_text_shadow(self.canvas, "DECISION ENGINE & ACTIVE RULES", self.font_header, SV_TEXT_TITLE, SV_TEXT_HI_SHADOW, (cx, cy), (0, 1))
+        cy += 30
 
         target_flower = getattr(self.bee, "_target_flower", None)
         if target_flower:
             target_str = f"Target: Flower #{target_flower.id} at ({target_flower.x}, {target_flower.y}) — Nectar: {target_flower.nectar}"
-            t_col = ACCENT
+            t_col = (185, 90, 15)
         elif s['target'] == "Hive":
             target_str = f"Target: Hive at ({self.env.hive[0]}, {self.env.hive[1]}) — Depositing Load"
-            t_col = (217, 119, 6)
+            t_col = (195, 110, 20)
         else:
             target_str = f"Target: {s['target'] if s['target'] else 'None (Simulation Finished)'}"
-            t_col = TEXT_DARK
+            t_col = SV_TEXT_DARK
 
-        self.canvas.blit(self.font_body_bold.render(target_str, True, t_col), (cx, cy))
-        cy += 26
+        draw_text_shadow(self.canvas, target_str, self.font_body_bold, t_col, SV_TEXT_HI_SHADOW, (cx, cy), (0, 1))
+        cy += 28
 
         hx, hy = self.env.hive
         bx, by = self.bee.pos
@@ -745,34 +1029,35 @@ class BeeLogicApp:
 
         if self.bee.nectar >= self.bee.max_nectar_capacity:
             rule_str = "Active Rule [Capacity Max]: Capacity reached (90/90) -> Return to Hive via A*"
-            rule_bg = (254, 242, 242)
-            rule_border = (252, 165, 165)
-            rule_color = (220, 38, 38)
+            r_box_fill = (248, 222, 220)
+            r_border = (180, 50, 45)
+            r_text_col = (150, 25, 20)
         elif self.bee.energy <= dist_to_hive + 2:
             rule_str = "Active Rule [Safety Reserve]: Energy low -> Immediate emergency return"
-            rule_bg = (254, 242, 242)
-            rule_border = (252, 165, 165)
-            rule_color = (220, 38, 38)
+            r_box_fill = (248, 222, 220)
+            r_border = (180, 50, 45)
+            r_text_col = (150, 25, 20)
         elif self.bee.nectar > 0:
             rule_str = f"Active Rule [Partial Load ({self.bee.nectar}/90)]: Seeking optimal nectar source"
-            rule_bg = ACCENT_LIGHT
-            rule_border = (191, 219, 254)
-            rule_color = ACCENT
+            r_box_fill = (248, 235, 195)
+            r_border = (195, 130, 30)
+            r_text_col = (155, 80, 12)
         else:
             rule_str = "Active Rule [Empty Capacity]: Foraging for initial high-yield flowers"
-            rule_bg = (241, 245, 249)
-            rule_border = CARD_BORDER
-            rule_color = (71, 85, 105)
+            r_box_fill = (235, 215, 175)
+            r_border = (150, 105, 60)
+            r_text_col = SV_TEXT_DARK
 
-        r_box = pygame.Rect(cx, cy, card_w - 32, 34)
-        pygame.draw.rect(self.canvas, rule_bg, r_box, border_radius=6)
-        pygame.draw.rect(self.canvas, rule_border, r_box, width=1, border_radius=6)
-        self.canvas.blit(self.font_badge.render(rule_str, True, rule_color), (cx + 10, cy + 8))
-        cy += 42
+        r_box = pygame.Rect(cx, cy, card_w - 36, 34)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, r_box, border_radius=5)
+        pygame.draw.rect(self.canvas, r_box_fill, r_box.inflate(-2, -2), border_radius=4)
+        pygame.draw.rect(self.canvas, r_border, r_box.inflate(-2, -2), width=1, border_radius=4)
+        draw_text_shadow(self.canvas, rule_str, self.font_badge, r_text_col, SV_TEXT_HI_SHADOW, (cx + 10, cy + 9), (0, 1))
+        cy += 44
 
-        self.canvas.blit(self.font_small_bold.render("Reasoning Explanation:", True, (100, 116, 139)), (cx, cy))
+        draw_text_shadow(self.canvas, "Reasoning Explanation:", self.font_small_bold, SV_TEXT_MUTED, SV_TEXT_HI_SHADOW, (cx, cy), (0, 1))
         cy += 20
-        self._draw_wrapped(s["reason"], cx, cy, card_w - 36, self.font_small, TEXT_DARK, max_lines=3)
+        self._draw_wrapped(s["reason"], cx, cy, card_w - 40, self.font_small, SV_TEXT_DARK, max_lines=3)
 
         y += card2_h + 14
 
@@ -781,55 +1066,82 @@ class BeeLogicApp:
         # ==============================================================
         card3_h = 472
         card3 = pygame.Rect(x, y, card_w, card3_h)
-        self.draw_glass_rect(self.canvas, (255, 255, 255, 235), card3, border_radius=10, border_color=CARD_BORDER, border_width=1)
+        draw_stardew_frame(self.canvas, card3, is_inset=False, corner_radius=8)
 
-        cx = x + 16
-        cy = y + 14
-        self.canvas.blit(self.font_header.render("CANDIDATE DECISION MATRIX", True, ACCENT), (cx, cy))
+        cx = x + 18
+        cy = y + 16
+        draw_text_shadow(self.canvas, "CANDIDATE DECISION MATRIX", self.font_header, SV_TEXT_TITLE, SV_TEXT_HI_SHADOW, (cx, cy), (0, 1))
         
-        formula_tag = self.font_badge.render("Score = Nectar / (Dist ^ 1.5)", True, (100, 116, 139))
-        self.canvas.blit(formula_tag, (x + card_w - formula_tag.get_width() - 16, cy + 2))
-        cy += 28
+        formula_tag = self.font_badge.render("Score = Nectar / (Dist ^ 1.5)", True, SV_TEXT_MUTED)
+        self.canvas.blit(formula_tag, (x + card_w - formula_tag.get_width() - 20, cy + 2))
+        cy += 30
 
         evals = getattr(self.bee, 'evaluations', [])
         if evals:
             headers = ["Flower ID", "Distance", "Nectar", "Score", "Decision Status"]
             col_x = [cx + 8, cx + 96, cx + 184, cx + 276, cx + 386]
             
-            # Table Header Background
-            th_rect = pygame.Rect(cx, cy, card_w - 32, 28)
-            pygame.draw.rect(self.canvas, (241, 245, 249), th_rect, border_radius=6)
+            # Stardew carved walnut header banner
+            th_rect = pygame.Rect(cx, cy, card_w - 36, 28)
+            pygame.draw.rect(self.canvas, SV_WOOD_DARK, th_rect, border_radius=4)
+            th_inner = th_rect.inflate(-2, -2)
+            pygame.draw.rect(self.canvas, SV_WOOD_HEADER, th_inner, border_radius=3)
+            pygame.draw.line(self.canvas, SV_WOOD_HI, (th_inner.left, th_inner.top), (th_inner.right - 1, th_inner.top), 1)
             for hx_pos, h in zip(col_x, headers):
-                self.canvas.blit(self.font_badge.render(h, True, (100, 116, 139)), (hx_pos, cy + 6))
+                draw_text_shadow(self.canvas, h, self.font_badge, (255, 230, 160), (45, 20, 8), (hx_pos, cy + 6), (1, 1))
             cy += 34
 
             for rank_idx, cand in enumerate(evals[:6]):
                 is_sel = cand.get("selected", False)
-                bg_c = ACCENT_LIGHT if is_sel else ((255, 255, 255) if rank_idx % 2 == 0 else (248, 250, 252))
-                border_c = ACCENT if is_sel else CARD_BORDER
-                txt_c = ACCENT if is_sel else TEXT_DARK
+                row_r = pygame.Rect(cx, cy, card_w - 36, 34)
                 
-                row_r = pygame.Rect(cx, cy, card_w - 32, 34)
-                pygame.draw.rect(self.canvas, bg_c, row_r, border_radius=6)
-                pygame.draw.rect(self.canvas, border_c, row_r, width=1, border_radius=6)
+                if is_sel:
+                    # Stardew golden honey highlight row
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, row_r, border_radius=5)
+                    pygame.draw.rect(self.canvas, SV_GOLD_WINNER, row_r.inflate(-2, -2), border_radius=4)
+                    pygame.draw.rect(self.canvas, SV_GOLD_BORDER, row_r.inflate(-2, -2), width=1, border_radius=4)
+                    txt_c = (50, 22, 8)
+                else:
+                    bg_c = SV_PARCHMENT_LIGHT if rank_idx % 2 == 0 else SV_PARCHMENT_INSET
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, row_r, width=1, border_radius=4)
+                    pygame.draw.rect(self.canvas, bg_c, row_r.inflate(-2, -2), border_radius=3)
+                    txt_c = SV_TEXT_DARK
 
-                self.canvas.blit(self.font_body_bold.render(f"Flower #{cand['id']}", True, txt_c), (col_x[0], cy + 8))
-                self.canvas.blit(self.font_body.render(f"{cand['dist']} steps", True, txt_c), (col_x[1], cy + 8))
-                self.canvas.blit(self.font_body.render(f"{cand['nectar']} u", True, txt_c), (col_x[2], cy + 8))
-                self.canvas.blit(self.font_body.render(f"{cand['score']:.2f}", True, txt_c), (col_x[3], cy + 8))
+                if is_sel:
+                    # Small golden diamond icon on the left
+                    dx = col_x[0] - 2
+                    dy = cy + 17
+                    pygame.draw.polygon(self.canvas, SV_WOOD_DARK, [(dx, dy - 5), (dx + 5, dy), (dx, dy + 5), (dx - 5, dy)])
+                    pygame.draw.polygon(self.canvas, SV_GOLD_STAR, [(dx, dy - 4), (dx + 4, dy), (dx, dy + 4), (dx - 4, dy)])
+
+                draw_text_shadow(self.canvas, f"Flower #{cand['id']}", self.font_body_bold, txt_c, SV_TEXT_HI_SHADOW, (col_x[0] + (8 if is_sel else 0), cy + 8), (0, 1))
+                draw_text_shadow(self.canvas, f"{cand['dist']} steps", self.font_body, txt_c, SV_TEXT_HI_SHADOW, (col_x[1], cy + 8), (0, 1))
+                draw_text_shadow(self.canvas, f"{cand['nectar']} u", self.font_body, txt_c, SV_TEXT_HI_SHADOW, (col_x[2], cy + 8), (0, 1))
+                draw_text_shadow(self.canvas, f"{cand['score']:.2f}", self.font_body, txt_c, SV_TEXT_HI_SHADOW, (col_x[3], cy + 8), (0, 1))
                 
-                status_str = "SELECTED" if is_sel else f"Rank #{rank_idx + 1}"
-                status_surf = self.font_badge.render(status_str, True, (255, 255, 255) if is_sel else (100, 116, 139))
-                st_w = status_surf.get_width() + 10
-                st_h = status_surf.get_height() + 4
-                st_box = pygame.Rect(col_x[4], cy + 6, st_w, st_h)
-                pygame.draw.rect(self.canvas, ACCENT if is_sel else (226, 232, 240), st_box, border_radius=4)
-                self.canvas.blit(status_surf, (col_x[4] + 5, cy + 8))
+                if is_sel:
+                    status_str = "SELECTED"
+                    st_surf = self.font_badge.render(status_str, True, (255, 255, 255))
+                    st_w = st_surf.get_width() + 14
+                    st_h = st_surf.get_height() + 4
+                    st_box = pygame.Rect(col_x[4], cy + 6, st_w, st_h)
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, st_box, border_radius=4)
+                    pygame.draw.rect(self.canvas, (180, 50, 15), st_box.inflate(-2, -2), border_radius=3)
+                    draw_text_shadow(self.canvas, status_str, self.font_badge, (255, 245, 220), (50, 15, 6), (col_x[4] + 7, cy + 8), (1, 1))
+                else:
+                    status_str = f"Rank #{rank_idx + 1}"
+                    st_surf = self.font_badge.render(status_str, True, SV_TEXT_MUTED)
+                    st_w = st_surf.get_width() + 10
+                    st_h = st_surf.get_height() + 4
+                    st_box = pygame.Rect(col_x[4], cy + 6, st_w, st_h)
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, st_box, width=1, border_radius=4)
+                    pygame.draw.rect(self.canvas, (240, 220, 180), st_box.inflate(-2, -2), border_radius=3)
+                    self.canvas.blit(st_surf, (col_x[4] + 5, cy + 8))
 
                 cy += 40
         else:
             empty_msg = "No active evaluations (Bee is currently returning to Hive or idle)"
-            self.canvas.blit(self.font_body.render(empty_msg, True, (100, 116, 139)), (cx + 10, cy + 40))
+            draw_text_shadow(self.canvas, empty_msg, self.font_body, SV_TEXT_MUTED, SV_TEXT_HI_SHADOW, (cx + 10, cy + 40), (0, 1))
 
     def _draw_wrapped(self, text, x, y, max_width, font, color, max_lines=3):
         words = text.split(" ")
@@ -845,74 +1157,126 @@ class BeeLogicApp:
         if line_text:
             lines.append(line_text)
         for i, l in enumerate(lines[:max_lines]):
-            surf = font.render(l, True, color)
-            self.canvas.blit(surf, (x, y + i * 20))
+            draw_text_shadow(self.canvas, l, font, color, SV_TEXT_HI_SHADOW, (x, y + i * 20), (0, 1))
 
     def draw_buttons_bar(self):
         self.btn_start.active = self.running_sim
         self.btn_pause.active = not self.running_sim and not self.bee.finished
+
+        # Stardew wooden toolbar shelf tray
+        y = self.grid_y + MAP_H + 8
+        tray_rect = pygame.Rect(16, y, WINDOW_W - 32, 62)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, tray_rect, border_radius=8)
+        t_inner = tray_rect.inflate(-4, -4)
+        pygame.draw.rect(self.canvas, (145, 82, 30), t_inner, border_radius=6)
+        pygame.draw.line(self.canvas, SV_WOOD_HI, (t_inner.left + 2, t_inner.top + 1), (t_inner.right - 3, t_inner.top + 1), 2)
+        pygame.draw.line(self.canvas, (90, 44, 16), (t_inner.left + 2, t_inner.bottom - 2), (t_inner.right - 3, t_inner.bottom - 2), 2)
+        
+        # Shelf recessed groove
+        groove = t_inner.inflate(-6, -6)
+        pygame.draw.rect(self.canvas, (65, 34, 15), groove, border_radius=4)
 
         for b in self.buttons:
             b.draw(self.canvas, self.font_button)
 
         self.strategy_dropdown.draw(self.canvas, self.font_button)
 
-        # Bottom Shortcut & Info Line
+        # Bottom Shortcut & Info Line with Stardew text shadow
         shortcut_text = "Shortcuts: [Space] Start / Pause   |   [R] Reset Simulation   |   [C] Run Benchmark   |   [Esc / Q] Quit Application"
-        self.canvas.blit(self.font_small_bold.render(shortcut_text, True, (248, 250, 252)), (24, 1048))
+        draw_text_shadow(self.canvas, shortcut_text, self.font_small_bold, (255, 246, 225), (42, 20, 8), (24, 1054), (1, 1))
         
         info_text = f"Environment Seed: {self.seed}"
-        info_surf = self.font_small_bold.render(info_text, True, (248, 250, 252))
-        self.canvas.blit(info_surf, (WINDOW_W - info_surf.get_width() - 24, 1048))
+        info_w = self.font_small_bold.size(info_text)[0]
+        draw_text_shadow(self.canvas, info_text, self.font_small_bold, (255, 246, 225), (42, 20, 8), (WINDOW_W - info_w - 24, 1054), (1, 1))
 
     def draw_event_banner(self):
-        text = self.font_header.render(self.event_banner, True, (255, 255, 255))
-        pad_x = 24
+        text = self.font_header.render(self.event_banner, True, (255, 255, 245))
+        pad_x = 28
         pad_y = 12
         w = text.get_width() + pad_x * 2
         h = text.get_height() + pad_y * 2
         rect = pygame.Rect(self.grid_x + (MAP_W - w) // 2, self.grid_y + 18, w, h)
-        pygame.draw.rect(self.canvas, (220, 38, 38), rect, border_radius=10)
-        pygame.draw.rect(self.canvas, (255, 255, 255), rect, width=1, border_radius=10)
-        self.canvas.blit(text, (rect.x + pad_x, rect.y + pad_y))
+        # Stardew wooden event plaque
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, rect, border_radius=8)
+        inner = rect.inflate(-4, -4)
+        pygame.draw.rect(self.canvas, SV_BTN_DANGER_FILL, inner, border_radius=6)
+        pygame.draw.line(self.canvas, SV_BTN_DANGER_HI, (inner.left + 2, inner.top + 1), (inner.right - 3, inner.top + 1), 2)
+        pygame.draw.line(self.canvas, SV_BTN_DANGER_SH, (inner.left + 2, inner.bottom - 2), (inner.right - 3, inner.bottom - 2), 2)
+        draw_text_shadow(self.canvas, self.event_banner, self.font_header, (255, 250, 235), (50, 15, 8), (rect.x + pad_x, rect.y + pad_y), (1, 1))
 
     def draw_comparison_overlay(self):
+        # Warm twilight dimming overlay
         overlay = pygame.Surface((WINDOW_W, WINDOW_H), pygame.SRCALPHA)
-        overlay.fill((15, 23, 42, 245))
+        overlay.fill((30, 18, 10, 235))
         self.canvas.blit(overlay, (0, 0))
 
-        # Main Card Box
-        main_box = pygame.Rect(80, 40, 1760, 1000)
-        pygame.draw.rect(self.canvas, (30, 41, 59), main_box, border_radius=16)
-        pygame.draw.rect(self.canvas, (51, 65, 85), main_box, width=1, border_radius=16)
+        # Main Bulletin Board / Farmer's Journal Frame
+        main_box = pygame.Rect(70, 36, 1780, 1008)
+        draw_stardew_frame(self.canvas, main_box, is_inset=False, corner_radius=12)
 
-        title = self.font_hero.render("Strategy Comparison & Performance Benchmark", True, (250, 204, 21))
-        self.canvas.blit(title, (120, 70))
+        # Ornate Carved Wooden Header Banner Ribbon
+        header_banner = pygame.Rect(100, 60, 1720, 66)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, header_banner, border_radius=8)
+        banner_inner = header_banner.inflate(-4, -4)
+        pygame.draw.rect(self.canvas, (138, 32, 28), banner_inner, border_radius=6)
+        pygame.draw.line(self.canvas, (215, 75, 65), (banner_inner.left + 2, banner_inner.top + 1), (banner_inner.right - 3, banner_inner.top + 1), 2)
+        pygame.draw.line(self.canvas, (80, 18, 14), (banner_inner.left + 2, banner_inner.bottom - 2), (banner_inner.right - 3, banner_inner.bottom - 2), 2)
+        
+        # Golden banner trim line
+        pygame.draw.rect(self.canvas, SV_WOOD_RIVET, banner_inner.inflate(-4, -4), width=1, border_radius=4)
 
-        sub = self.font_body.render("Real-time empirical evaluation of Nearest Neighbor (BFS), Greedy (Highest Nectar), and Intelligent Weighted A* Search", True, (203, 213, 225))
-        self.canvas.blit(sub, (120, 112))
+        title_str = "STRATEGY COMPARISON & PERFORMANCE BENCHMARK"
+        tw, th = self.font_hero.size(title_str)
+        tx = 100 + (1720 - tw) // 2
+        ty = 76
+        
+        # Golden star emblems flanking title
+        for dx in [tx - 26, tx + tw + 26]:
+            pygame.draw.polygon(self.canvas, SV_WOOD_DARK, [(dx, ty + 16 - 8), (dx + 8, ty + 16), (dx, ty + 16 + 8), (dx - 8, ty + 16)])
+            pygame.draw.polygon(self.canvas, SV_GOLD_STAR, [(dx, ty + 16 - 6), (dx + 6, ty + 16), (dx, ty + 16 + 6), (dx - 6, ty + 16)])
+        
+        draw_text_shadow(self.canvas, title_str, self.font_hero, (255, 225, 120), (50, 12, 8), (tx, ty), (1, 2))
+
+        sub_str = "Empirical field trial of Nearest Neighbor (BFS), Greedy (Highest Nectar), and Intelligent Weighted A* Search"
+        draw_text_shadow(self.canvas, sub_str, self.font_body, SV_TEXT_MUTED, SV_TEXT_HI_SHADOW, (110, 136), (0, 1))
 
         headers = ["Strategy", "Nectar Collected", "Distance Travelled", "Energy Consumed", "Flowers Visited", "Time Steps", "Efficiency Ratio"]
         col_x = [120, 520, 760, 1000, 1220, 1420, 1600]
 
-        y = 160
+        y = 168
+        # Table Header Banner
         th_box = pygame.Rect(100, y, 1720, 36)
-        pygame.draw.rect(self.canvas, (51, 65, 85), th_box, border_radius=8)
+        pygame.draw.rect(self.canvas, SV_WOOD_DARK, th_box, border_radius=6)
+        th_inner = th_box.inflate(-2, -2)
+        pygame.draw.rect(self.canvas, SV_WOOD_HEADER, th_inner, border_radius=5)
+        pygame.draw.line(self.canvas, SV_WOOD_HI, (th_inner.left, th_inner.top), (th_inner.right - 1, th_inner.top), 1)
+
         for cx, h in zip(col_x, headers):
-            surf = self.font_header.render(h, True, (250, 204, 21))
-            self.canvas.blit(surf, (cx, y + 6))
-        y += 48
+            draw_text_shadow(self.canvas, h, self.font_header, (255, 230, 150), (45, 18, 6), (cx, y + 6), (1, 1))
+        y += 46
 
         if self.comparison_results:
             best_eff = max(r["efficiency"] for r in self.comparison_results)
             for r in self.comparison_results:
                 is_winner = (r["efficiency"] == best_eff)
                 row_box = pygame.Rect(100, y, 1720, 42)
+                
                 if is_winner:
-                    pygame.draw.rect(self.canvas, (30, 58, 138), row_box, border_radius=8)
-                    pygame.draw.rect(self.canvas, (96, 165, 250), row_box, width=1, border_radius=8)
+                    # Winner row in golden starfruit wood
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, row_box, border_radius=6)
+                    pygame.draw.rect(self.canvas, SV_GOLD_WINNER, row_box.inflate(-2, -2), border_radius=5)
+                    pygame.draw.rect(self.canvas, SV_GOLD_BORDER, row_box.inflate(-2, -2), width=1, border_radius=5)
+                    txt_color = (54, 22, 6)
+                    # Gold Star emblem
+                    dx = col_x[0] - 8
+                    dy = y + 21
+                    pygame.draw.polygon(self.canvas, SV_WOOD_DARK, [(dx, dy - 7), (dx + 7, dy), (dx, dy + 7), (dx - 7, dy)])
+                    pygame.draw.polygon(self.canvas, SV_GOLD_STAR, [(dx, dy - 5), (dx + 5, dy), (dx, dy + 5), (dx - 5, dy)])
                 else:
-                    pygame.draw.rect(self.canvas, (15, 23, 42), row_box, border_radius=8)
+                    pygame.draw.rect(self.canvas, SV_WOOD_DARK, row_box, width=1, border_radius=6)
+                    row_bg = SV_PARCHMENT_LIGHT if (y // 48) % 2 == 0 else SV_PARCHMENT_INSET
+                    pygame.draw.rect(self.canvas, row_bg, row_box.inflate(-2, -2), border_radius=5)
+                    txt_color = SV_TEXT_DARK
 
                 values = [
                     r["label"] + (" [WINNER]" if is_winner else ""),
@@ -924,45 +1288,69 @@ class BeeLogicApp:
                     f"{r['efficiency']:.3f} (Nectar/Dist)",
                 ]
                 for cx, v in zip(col_x, values):
-                    txt_color = (255, 255, 255) if not is_winner else (250, 204, 21)
-                    surf = self.font_body_bold.render(v, True, txt_color) if is_winner else self.font_body.render(v, True, txt_color)
-                    self.canvas.blit(surf, (cx, y + 10))
-                y += 50
+                    fnt = self.font_body_bold if is_winner else self.font_body
+                    draw_text_shadow(self.canvas, v, fnt, txt_color, SV_TEXT_HI_SHADOW, (cx + (10 if is_winner and cx == col_x[0] else 0), y + 10), (0, 1))
+                y += 48
 
-            y += 20
-            chart_box = pygame.Rect(100, y, 1720, 240)
-            pygame.draw.rect(self.canvas, (15, 23, 42), chart_box, border_radius=12)
-            pygame.draw.rect(self.canvas, (51, 65, 85), chart_box, width=1, border_radius=12)
+            y += 18
+            # Inset Visual Efficiency Chart Box
+            chart_box = pygame.Rect(100, y, 1720, 230)
+            draw_stardew_slot(self.canvas, chart_box)
             
-            self.canvas.blit(self.font_header.render("VISUAL EFFICIENCY BENCHMARK (Nectar Collected / Distance Travelled)", True, (250, 204, 21)), (130, y + 16))
+            chart_title = "VISUAL EFFICIENCY BENCHMARK (Nectar Collected / Distance Travelled)"
+            # Golden diamonds beside chart title
+            cdx = 120
+            cdy = y + 24
+            pygame.draw.polygon(self.canvas, SV_WOOD_DARK, [(cdx, cdy - 5), (cdx + 5, cdy), (cdx, cdy + 5), (cdx - 5, cdy)])
+            pygame.draw.polygon(self.canvas, SV_GOLD_STAR, [(cdx, cdy - 4), (cdx + 4, cdy), (cdx, cdy + 4), (cdx - 4, cdy)])
+            draw_text_shadow(self.canvas, chart_title, self.font_header, SV_TEXT_TITLE, SV_TEXT_HI_SHADOW, (135, y + 14), (0, 1))
 
             max_eff = max(r["efficiency"] for r in self.comparison_results) or 1.0
-            colors = [(91, 143, 185), (224, 164, 88), (52, 211, 153)]
+            
+            # Stardew harvest bar colors: Blueberry Blue, Pumpkin Orange, Starfruit Gold
+            bar_colors = [
+                ((58, 135, 215), (115, 185, 245), (35, 95, 165)),
+                ((235, 135, 35), (255, 185, 95), (170, 85, 15)),
+                ((245, 195, 35), (255, 235, 115), (180, 135, 15)),
+            ]
 
-            bar_y = y + 58
+            bar_y = y + 52
             for i, r in enumerate(self.comparison_results):
-                lbl = self.font_body_bold.render(r["label"].split(" (")[0], True, (255, 255, 255))
-                self.canvas.blit(lbl, (130, bar_y + 4))
+                lbl = r["label"].split(" (")[0]
+                draw_text_shadow(self.canvas, lbl, self.font_body_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, bar_y + 4), (0, 1))
                 
                 bar_max_w = 1100
-                bar_w = int((r["efficiency"] / max_eff) * bar_max_w)
-                pygame.draw.rect(self.canvas, (51, 65, 85), (380, bar_y, bar_max_w, 28), border_radius=6)
-                pygame.draw.rect(self.canvas, colors[i], (380, bar_y, bar_w, 28), border_radius=6)
+                bar_w = max(6, int((r["efficiency"] / max_eff) * bar_max_w))
                 
-                eff_txt = self.font_header.render(f"{r['efficiency']:.3f} Nectar/Step", True, (255, 255, 255))
-                self.canvas.blit(eff_txt, (1500, bar_y + 4))
-                bar_y += 48
+                # Dark soil recessed groove
+                track_r = pygame.Rect(380, bar_y, bar_max_w, 28)
+                pygame.draw.rect(self.canvas, SV_WOOD_DARK, track_r, border_radius=5)
+                groove_r = track_r.inflate(-2, -2)
+                pygame.draw.rect(self.canvas, (68, 38, 18), groove_r, border_radius=4)
 
-            y += 260
+                # Filled glossy bar
+                c_main, c_hi, c_sh = bar_colors[i % len(bar_colors)]
+                fill_r = pygame.Rect(groove_r.x, groove_r.y, bar_w, groove_r.h)
+                pygame.draw.rect(self.canvas, c_main, fill_r, border_radius=4)
+                pygame.draw.line(self.canvas, c_hi, (fill_r.left + 1, fill_r.top + 1), (fill_r.right - 2, fill_r.top + 1), 2)
+                pygame.draw.line(self.canvas, c_sh, (fill_r.left + 1, fill_r.bottom - 2), (fill_r.right - 2, fill_r.bottom - 2), 2)
+                
+                eff_txt = f"{r['efficiency']:.3f} Nectar/Step"
+                draw_text_shadow(self.canvas, eff_txt, self.font_header, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1500, bar_y + 4), (0, 1))
+                bar_y += 46
+
+            y += 248
             
-            # Two Side-by-Side Breakdown Cards
+            # Two Pinned Summary Notes (Cards A and B)
             box_w = 845
             box_h = 160
             
-            # Card A
+            # Card A: Key Findings
             v_box1 = pygame.Rect(100, y, box_w, box_h)
-            pygame.draw.rect(self.canvas, (15, 23, 42), v_box1, border_radius=12)
-            pygame.draw.rect(self.canvas, (37, 99, 235), v_box1, width=1, border_radius=12)
+            draw_stardew_slot(self.canvas, v_box1)
+            # Brass pin at top center
+            pygame.draw.circle(self.canvas, SV_WOOD_DARK, (v_box1.centerx, v_box1.top + 6), 6)
+            pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (v_box1.centerx, v_box1.top + 6), 4)
 
             intel = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_INTELLIGENT)
             greedy = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_GREEDY)
@@ -971,31 +1359,33 @@ class BeeLogicApp:
             eff_diff = ((intel["efficiency"] - greedy["efficiency"]) / max(0.001, greedy["efficiency"])) * 100
             dist_diff = ((greedy["distance_travelled"] - intel["distance_travelled"]) / max(1, intel["distance_travelled"])) * 100
 
-            self.canvas.blit(self.font_header.render("KEY QUANTITATIVE FINDINGS", True, (96, 165, 250)), (130, y + 16))
+            draw_text_shadow(self.canvas, "KEY QUANTITATIVE FINDINGS", self.font_header, (180, 85, 15), SV_TEXT_HI_SHADOW, (130, y + 16), (0, 1))
             v_text1 = f"• Intelligent Bee achieved +{eff_diff:.1f}% higher efficiency than Highest Nectar (Greedy)."
             v_text2 = f"• Greedy strategy traveled {dist_diff:.1f}% farther due to unweighted heuristic choices."
             v_text3 = f"• Nearest Neighbor collected fewer total nectar units due to sub-optimal local clustering."
             
-            self.canvas.blit(self.font_body.render(v_text1, True, (226, 232, 240)), (130, y + 50))
-            self.canvas.blit(self.font_body.render(v_text2, True, (226, 232, 240)), (130, y + 80))
-            self.canvas.blit(self.font_body.render(v_text3, True, (226, 232, 240)), (130, y + 110))
+            draw_text_shadow(self.canvas, v_text1, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 50), (0, 1))
+            draw_text_shadow(self.canvas, v_text2, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 80), (0, 1))
+            draw_text_shadow(self.canvas, v_text3, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 110), (0, 1))
 
-            # Card B
+            # Card B: Decision-Theoretic Summary
             v_box2 = pygame.Rect(975, y, box_w, box_h)
-            pygame.draw.rect(self.canvas, (15, 23, 42), v_box2, border_radius=12)
-            pygame.draw.rect(self.canvas, (52, 211, 153), v_box2, width=1, border_radius=12)
+            draw_stardew_slot(self.canvas, v_box2)
+            # Brass pin at top center
+            pygame.draw.circle(self.canvas, SV_WOOD_DARK, (v_box2.centerx, v_box2.top + 6), 6)
+            pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (v_box2.centerx, v_box2.top + 6), 4)
 
-            self.canvas.blit(self.font_header.render("CLASSICAL AI & DECISION-THEORETIC SUMMARY", True, (52, 211, 153)), (1005, y + 16))
+            draw_text_shadow(self.canvas, "CLASSICAL AI & DECISION-THEORETIC SUMMARY", self.font_header, (65, 140, 40), SV_TEXT_HI_SHADOW, (1005, y + 16), (0, 1))
             c_text1 = "• Production Rules: Capacity threshold (90/90) & energy reserve safety margins."
             c_text2 = "• Heuristic Formulation: Score = Nectar / (Distance ^ 1.5) balances yield & cost."
             c_text3 = "• Pathfinding: Optimal obstacle traversal via A* Search and BFS grid exploration."
 
-            self.canvas.blit(self.font_body.render(c_text1, True, (226, 232, 240)), (1005, y + 50))
-            self.canvas.blit(self.font_body.render(c_text2, True, (226, 232, 240)), (1005, y + 80))
-            self.canvas.blit(self.font_body.render(c_text3, True, (226, 232, 240)), (1005, y + 110))
+            draw_text_shadow(self.canvas, c_text1, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 50), (0, 1))
+            draw_text_shadow(self.canvas, c_text2, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 80), (0, 1))
+            draw_text_shadow(self.canvas, c_text3, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 110), (0, 1))
 
-        hint = self.font_body.render("Click anywhere or press [Esc / Space] to return to simulation. Benchmark chart saved to out/comparison_chart.png.", True, (148, 163, 184))
-        self.canvas.blit(hint, (100, 1000))
+        hint_str = "[ Click anywhere or press ESC / SPACE to return to simulation. Benchmark chart saved to out/comparison_chart.png ]"
+        draw_text_shadow(self.canvas, hint_str, self.font_body_bold, (255, 230, 140), (45, 18, 6), (100, 1004), (1, 1))
 
     def draw(self):
         backdrop = self.sprite_mgr.get_backdrop_frame(self.anim_time)
