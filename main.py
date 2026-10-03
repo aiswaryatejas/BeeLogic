@@ -513,9 +513,9 @@ class BeeLogicApp:
 
         # 3. Grid lines (crisp subtle overlay on grass)
         grid_line_surf = pygame.Surface((MAP_W, MAP_H), pygame.SRCALPHA)
-        for gx in range(GRID_COLS + 1):
+        for gx in range(1, GRID_COLS):
             pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (gx * CELL, 0), (gx * CELL, MAP_H), 1)
-        for gy in range(GRID_ROWS + 1):
+        for gy in range(1, GRID_ROWS):
             pygame.draw.line(grid_line_surf, (255, 255, 255, 45), (0, gy * CELL), (MAP_W, gy * CELL), 1)
         self.grid_surface.blit(grid_line_surf, (0, 0))
 
@@ -581,10 +581,7 @@ class BeeLogicApp:
         # 5. Mask the outer corners so all drawn elements adhere cleanly to rounded outer shape
         self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
-        # 6. Crisp subtle border along rounded outer boundary
-        pygame.draw.rect(self.grid_surface, CARD_BORDER, (0, 0, MAP_W, MAP_H), width=1, border_radius=GRID_RADIUS)
-
-        # 7. Blit onto main canvas at spaced offset
+        # 6. Blit onto main canvas at spaced offset
         self.canvas.blit(self.grid_surface, (self.grid_x, self.grid_y))
 
     def draw_legend(self, surface):
