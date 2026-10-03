@@ -467,12 +467,12 @@ class BeeLogicApp:
         self.btn_pause = Button((144, y, 110, h), "Pause")
         self.btn_reset = Button((264, y, 110, h), "Reset")
         
-        dropdown_options = [(s, STRATEGY_LABELS[s].split(" (")[0]) for s in self.strategies]
-        self.strategy_dropdown = Dropdown((384, y, 330, h), dropdown_options, selected_idx=2)
+        dropdown_options = [(s, STRATEGY_LABELS[s]) for s in self.strategies]
+        self.strategy_dropdown = Dropdown((384, y, 360, h), dropdown_options, selected_idx=2)
         
-        self.btn_speed = Button((724, y, 160, h), f"Speed: {self.sim_speed:.1f}x")
-        self.btn_trigger = Button((894, y, 240, h), "Deplete Flower", is_danger=False)
-        self.btn_compare = Button((1144, y, 270, h), "Run Benchmark (C)", is_benchmark=True)
+        self.btn_speed = Button((754, y, 150, h), f"Speed: {self.sim_speed:.1f}x")
+        self.btn_trigger = Button((914, y, 220, h), "Deplete Flower", is_danger=False)
+        self.btn_compare = Button((1144, y, 260, h), "Run Benchmark (C)", is_benchmark=True)
         self.btn_exit = Button((1770, y, 126, h), "Quit (Esc)", is_danger=True)
         
         self.buttons = [
