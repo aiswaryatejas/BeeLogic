@@ -1,304 +1,141 @@
-"""
-decision.py
------------
-This is the "brain" of the project. It contains:
-
-    1. The heuristic used by the Intelligent Bee:
-           score = effective_nectar / distance
-       (higher score = more nectar reward per step of travel)
-
-    2. Rule-based reasoning (classical AI production rules):
-           IF flower is depleted            -> ignore it
-           IF nectar capacity is full        -> return to hive
-           IF energy too low for round trip  -> return to hive
-           IF no suitable flower exists       -> return to hive / end
-           IF environment changes             -> re-evaluate & re-plan
-
-    3. SimulationController -- a single class that runs ONE strategy
-       ("nearest" / "greedy" / "intelligent") step by step.
-"""
-
 from algorithms.bfs import bfs_path, bfs_nearest_flower
 from algorithms.astar import astar_path
 
-STRATEGY_NEAREST = "nearest"
-STRATEGY_GREEDY = "greedy"
-STRATEGY_INTELLIGENT = "intelligent"
-
+STRATEGY_NEAREST, STRATEGY_GREEDY, STRATEGY_INTELLIGENT = "nearest", "greedy", "intelligent"
 STRATEGY_LABELS = {
     STRATEGY_NEAREST: "Nearest Flower (BFS)",
     STRATEGY_GREEDY: "Highest Nectar (Greedy)",
     STRATEGY_INTELLIGENT: "Intelligent Bee (Heuristic + A*)",
 }
 
-
 def heuristic_score(effective_nectar, distance):
-    """
-    Computes candidate score using a non-linear distance penalty exponent (1.5).
-    This forces the agent to strongly favor high nectar density relative to distance travelled,
-    maximizing the Nectar / Distance efficiency ratio.
-    """
-    distance = max(distance, 1)
-    return effective_nectar / (distance ** 1.5)
-
+    return effective_nectar / (max(distance, 1) ** 1.5)
 
 def estimate_round_trip_energy(env, flower_pos, one_way_distance):
     return_path = bfs_path(env, flower_pos, env.hive)
-    back_distance = (len(return_path) - 1) if return_path else one_way_distance
-    return one_way_distance + back_distance
-
+    return one_way_distance + ((len(return_path) - 1) if return_path else one_way_distance)
 
 class SimulationController:
     def __init__(self, env, bee, strategy, event_step=None):
-        self.env = env
-        self.bee = bee
-        self.strategy = strategy
-        self.event_step = event_step
-        self.event_triggered = False
-        self.event_log = None
+        self.env, self.bee, self.strategy, self.event_step = env, bee, strategy, event_step
+        self.event_triggered, self.event_log = False, None
 
     def tick(self):
-        bee = self.bee
-        if bee.finished:
+        b = self.bee
+        if b.finished:
             return
-
-        if bee.time_steps >= bee.max_steps:
-            bee.finished = True
-            bee.current_decision = "End"
-            bee.reason = "Maximum simulation steps reached"
+        if b.time_steps >= b.max_steps:
+            b.finished, b.current_decision, b.reason = True, "End", "Maximum simulation steps reached"
             return
-
-        # Trigger automated event step if configured
-        if self.event_step is not None and bee.time_steps >= self.event_step and not self.event_triggered:
+        if self.event_step is not None and b.time_steps >= self.event_step and not self.event_triggered:
             self.trigger_dynamic_event()
-
-        # Check if the bee's target flower became depleted mid-flight
-        if bee._target_flower is not None and not bee._target_flower.is_available():
-            depleted_id = bee._target_flower.id
-            bee.current_path = []
-            bee.current_target = None
-            bee._target_flower = None
-            bee.current_decision = f"Redirecting (Flower #{depleted_id} Depleted)"
-            bee.reason = f"Target Flower #{depleted_id} depleted mid-flight; re-evaluating optimal target"
-            if not bee.finished:
+        if b._target_flower and not b._target_flower.is_available():
+            dep_id = b._target_flower.id
+            b.current_path, b.current_target, b._target_flower = [], None, None
+            b.current_decision, b.reason = f"Redirecting (Flower #{dep_id} Depleted)", f"Target Flower #{dep_id} depleted mid-flight; re-evaluating optimal target"
+            if not b.finished:
                 self._decide_next_target()
-
-        if bee.current_path and len(bee.current_path) > 1:
-            bee.step_along_path()
-            if len(bee.current_path) == 1:
+        if b.current_path and len(b.current_path) > 1:
+            b.step_along_path()
+            if len(b.current_path) == 1:
                 self._handle_arrival()
         else:
             self._handle_arrival()
-            if not bee.finished:
+            if not b.finished:
                 self._decide_next_target()
 
     def trigger_dynamic_event(self, target_flower=None):
-        """
-        Triggers a dynamic event to deplete a flower (target_flower if given,
-        or the flower the bee is currently heading towards, or a random available flower).
-        Immediately re-evaluates and redirects the bee if its target was depleted.
-        """
         self.event_triggered = True
-        
-        # 1. If explicit target_flower provided and available
-        if target_flower is not None and target_flower.is_available():
-            flower = self.env.trigger_dynamic_event(target_flower=target_flower)
-        # 2. If bee is actively pursuing an available flower, prioritize depleting that flower
-        elif self.bee._target_flower is not None and self.bee._target_flower.is_available():
-            flower = self.env.trigger_dynamic_event(target_flower=self.bee._target_flower)
-        # 3. Otherwise pick randomly among available flowers
-        else:
-            flower = self.env.trigger_dynamic_event()
-
-        if flower is not None:
-            self.event_log = f"Dynamic Event: Flower #{flower.id} became depleted!"
-        else:
-            self.event_log = "Dynamic Event: No available flowers to deplete."
-
-        bee = self.bee
-        if bee._target_flower is not None and not bee._target_flower.is_available():
-            depleted_id = bee._target_flower.id
-            bee.current_path = []
-            bee.current_target = None
-            bee._target_flower = None
-            bee.current_decision = f"Redirecting (Flower #{depleted_id} Depleted)"
-            bee.reason = f"Target Flower #{depleted_id} depleted mid-flight; re-evaluating optimal target"
-            if not bee.finished:
+        target = target_flower if target_flower and target_flower.is_available() else (self.bee._target_flower if self.bee._target_flower and self.bee._target_flower.is_available() else None)
+        flower = self.env.trigger_dynamic_event(target_flower=target)
+        self.event_log = f"Dynamic Event: Flower #{flower.id} became depleted!" if flower else "Dynamic Event: No available flowers to deplete."
+        if self.bee._target_flower and not self.bee._target_flower.is_available():
+            dep_id = self.bee._target_flower.id
+            self.bee.current_path, self.bee.current_target, self.bee._target_flower = [], None, None
+            self.bee.current_decision, self.bee.reason = f"Redirecting (Flower #{dep_id} Depleted)", f"Target Flower #{dep_id} depleted mid-flight; re-evaluating optimal target"
+            if not self.bee.finished:
                 self._decide_next_target()
-
         return flower
 
     def _trigger_environment_change(self):
         return self.trigger_dynamic_event()
 
     def _handle_arrival(self):
-        bee = self.bee
-        if bee.current_target == "Hive" and bee.pos == bee.hive_pos:
-            bee.deposit_at_hive()
-            bee.current_target = None
-            bee.current_path = []
-            bee._target_flower = None
-        elif bee._target_flower is not None and bee.pos == bee._target_flower.pos():
-            flower = bee._target_flower
-            taken = bee.harvest_flower(flower)
-            bee.current_decision = f"Collected nectar from Flower {flower.id}"
-            bee.reason = f"Took {taken} nectar (flower now {'depleted' if flower.depleted else 'has ' + str(flower.nectar) + ' left'})"
-            bee.current_target = None
-            bee.current_path = []
-            bee._target_flower = None
+        b = self.bee
+        if b.current_target == "Hive" and b.pos == b.hive_pos:
+            b.deposit_at_hive()
+            b.current_target, b.current_path, b._target_flower = None, [], None
+        elif b._target_flower and b.pos == b._target_flower.pos():
+            fl = b._target_flower
+            taken = b.harvest_flower(fl)
+            b.current_decision = f"Collected nectar from Flower {fl.id}"
+            b.reason = f"Took {taken} nectar (flower now {'depleted' if fl.depleted else 'has ' + str(fl.nectar) + ' left'})"
+            b.current_target, b.current_path, b._target_flower = None, [], None
 
     def _go_to_hive(self, reason):
-        bee, env = self.bee, self.env
-        path = astar_path(env, bee.pos, bee.hive_pos) or bfs_path(env, bee.pos, bee.hive_pos)
-        bee.current_target = "Hive"
-        bee.current_path = path if path else [bee.pos]
-        bee._target_flower = None
-        bee.current_decision = "Return to Hive"
-        bee.reason = reason
-        bee.evaluations = []  # Clear table when heading to hive
+        path = astar_path(self.env, self.bee.pos, self.bee.hive_pos) or bfs_path(self.env, self.bee.pos, self.bee.hive_pos)
+        self.bee.current_target, self.bee.current_path, self.bee._target_flower = "Hive", (path or [self.bee.pos]), None
+        self.bee.current_decision, self.bee.reason, self.bee.evaluations = "Return to Hive", reason, []
 
     def _end_simulation(self, reason):
-        bee = self.bee
-        bee.finished = True
-        bee.current_target = None
-        bee.current_path = []
-        bee.current_decision = "End"
-        bee.reason = reason
-        bee.evaluations = []
+        self.bee.finished, self.bee.current_target, self.bee.current_path = True, None, []
+        self.bee.current_decision, self.bee.reason, self.bee.evaluations = "End", reason, []
+
+    def _set_target(self, flower, path, decision, reason, evaluations=None):
+        self.bee._target_flower, self.bee.current_target, self.bee.current_path = flower, f"Flower {flower.id}", path
+        self.bee.current_decision, self.bee.reason = decision, reason
+        self.bee.evaluations = evaluations or []
 
     def _decide_next_target(self):
-        bee, env = self.bee, self.env
-        available = env.available_flowers()
-
-        if bee.nectar >= bee.max_nectar_capacity:
-            self._go_to_hive("Nectar capacity full")
-            return
-
-        if not available:
-            if bee.pos == bee.hive_pos and bee.nectar == 0:
-                self._end_simulation("No suitable flower exists - mission complete")
-            else:
-                self._go_to_hive("No available flowers remain")
-            return
-
+        avail = self.env.available_flowers()
+        if self.bee.nectar >= self.bee.max_nectar_capacity:
+            return self._go_to_hive("Nectar capacity full")
+        if not avail:
+            return self._end_simulation("No suitable flower exists - mission complete") if self.bee.pos == self.bee.hive_pos and self.bee.nectar == 0 else self._go_to_hive("No available flowers remain")
         if self.strategy == STRATEGY_NEAREST:
-            self._decide_nearest(available)
+            self._decide_nearest(avail)
         elif self.strategy == STRATEGY_GREEDY:
-            self._decide_greedy(available)
+            self._decide_greedy(avail)
         else:
-            self._decide_intelligent(available)
+            self._decide_intelligent(avail)
 
     def _decide_nearest(self, available):
-        bee, env = self.bee, self.env
-        flower, path = bfs_nearest_flower(env, bee.pos, available)
-        if flower is None:
-            self._go_to_hive("No reachable flower")
-            return
-
-        distance = len(path) - 1
-        needed = estimate_round_trip_energy(env, flower.pos(), distance)
-        if needed > bee.energy:
-            self._go_to_hive("Energy too low to safely reach flower and return")
-            return
-
-        bee._target_flower = flower
-        bee.current_target = f"Flower {flower.id}"
-        bee.current_path = path
-        bee.current_decision = f"Move to Flower {flower.id} (Nearest Flower)"
-        bee.reason = f"Closest available flower, distance {distance}"
-
-        # Decision Matrix evaluation for Nearest
-        bee.evaluations = [
-            {"id": flower.id, "dist": distance, "nectar": flower.nectar, "score": 1.0 / max(1, distance), "selected": True}
-        ]
+        flower, path = bfs_nearest_flower(self.env, self.bee.pos, available)
+        if not flower:
+            return self._go_to_hive("No reachable flower")
+        dist = len(path) - 1
+        if estimate_round_trip_energy(self.env, flower.pos(), dist) > self.bee.energy:
+            return self._go_to_hive("Energy too low to safely reach flower and return")
+        self._set_target(flower, path, f"Move to Flower {flower.id} (Nearest Flower)", f"Closest available flower, distance {dist}", [{"id": flower.id, "dist": dist, "nectar": flower.nectar, "score": 1.0 / max(1, dist), "selected": True}])
 
     def _decide_greedy(self, available):
-        bee, env = self.bee, self.env
         flower = max(available, key=lambda f: f.nectar)
-        path = astar_path(env, bee.pos, flower.pos()) or bfs_path(env, bee.pos, flower.pos())
-        if path is None:
-            self._go_to_hive("No path to highest-nectar flower")
-            return
-
-        distance = len(path) - 1
-        needed = estimate_round_trip_energy(env, flower.pos(), distance)
-        if needed > bee.energy:
-            self._go_to_hive("Energy too low to safely reach flower and return")
-            return
-
-        bee._target_flower = flower
-        bee.current_target = f"Flower {flower.id}"
-        bee.current_path = path
-        bee.current_decision = f"Move to Flower {flower.id} (Highest Nectar)"
-        bee.reason = f"Highest nectar available ({flower.nectar}), ignoring distance"
-
-        # Decision Matrix evaluation for Greedy (top 4 candidates by nectar)
-        bee.evaluations = [
-            {"id": f.id, "dist": abs(f.x - bee.pos[0]) + abs(f.y - bee.pos[1]), "nectar": f.nectar, "score": float(f.nectar), "selected": (f.id == flower.id)}
-            for f in sorted(available, key=lambda x: x.nectar, reverse=True)[:4]
-        ]
+        path = astar_path(self.env, self.bee.pos, flower.pos()) or bfs_path(self.env, self.bee.pos, flower.pos())
+        if not path:
+            return self._go_to_hive("No path to highest-nectar flower")
+        dist = len(path) - 1
+        if estimate_round_trip_energy(self.env, flower.pos(), dist) > self.bee.energy:
+            return self._go_to_hive("Energy too low to safely reach flower and return")
+        evals = [{"id": f.id, "dist": abs(f.x - self.bee.pos[0]) + abs(f.y - self.bee.pos[1]), "nectar": f.nectar, "score": float(f.nectar), "selected": (f.id == flower.id)} for f in sorted(available, key=lambda x: x.nectar, reverse=True)[:4]]
+        self._set_target(flower, path, f"Move to Flower {flower.id} (Highest Nectar)", f"Highest nectar available ({flower.nectar}), ignoring distance", evals)
 
     def _decide_intelligent(self, available):
-        bee, env = self.bee, self.env
-
-        best_flower = None
-        best_path = None
-        best_score = -1.0
-        eval_list = []
-
+        best_f, best_p, best_s, evals = None, None, -1.0, []
         for f in available:
-            # 1. Path from current position to candidate flower
-            path = astar_path(env, bee.pos, f.pos()) or bfs_path(env, bee.pos, f.pos())
-            if path is None:
+            path = astar_path(self.env, self.bee.pos, f.pos()) or bfs_path(self.env, self.bee.pos, f.pos())
+            if not path:
                 continue
-            distance = len(path) - 1
-
-            # 2. Verify energy budget for safe trip
-            needed = estimate_round_trip_energy(env, f.pos(), distance)
-            if needed > bee.energy:
+            dist = len(path) - 1
+            if estimate_round_trip_energy(self.env, f.pos(), dist) > self.bee.energy:
                 continue
-
-            # 3. Path from candidate flower back to hive (Round-trip evaluation)
-            return_path = bfs_path(env, f.pos(), bee.hive_pos)
-            return_dist = (len(return_path) - 1) if return_path else distance
-            total_effective_distance = distance + return_dist
-
-            # 4. Cap nectar reward to available storage capacity
-            remaining_capacity = bee.max_nectar_capacity - bee.nectar
-            effective_nectar = min(f.nectar, remaining_capacity)
-
-            # 5. Compute utility score using non-linear penalty on total effective distance
-            score = heuristic_score(effective_nectar, total_effective_distance)
-
-            eval_list.append({
-                "id": f.id,
-                "dist": distance,
-                "nectar": f.nectar,
-                "score": score,
-                "selected": False
-            })
-
-            if score > best_score:
-                best_score = score
-                best_flower = f
-                best_path = path
-
-        if best_flower is None:
-            self._go_to_hive("No flower reachable within a safe energy budget")
-            return
-
-        # Sort candidate list descending by score
-        eval_list.sort(key=lambda x: x["score"], reverse=True)
-        for item in eval_list:
-            if item["id"] == best_flower.id:
-                item["selected"] = True
-
-        # Pass top candidate evaluations to bee for rendering in the Decision Matrix panel
-        bee.evaluations = eval_list[:4]
-
-        distance = len(best_path) - 1
-        bee._target_flower = best_flower
-        bee.current_target = f"Flower {best_flower.id}"
-        bee.current_path = best_path
-        bee.current_decision = f"Move to Flower {best_flower.id} (Intelligent Bee)"
-        bee.reason = f"Best score {best_score:.2f} (nectar {best_flower.nectar}, distance {distance})"
+            ret = bfs_path(self.env, f.pos(), self.bee.hive_pos)
+            score = heuristic_score(min(f.nectar, self.bee.max_nectar_capacity - self.bee.nectar), dist + ((len(ret) - 1) if ret else dist))
+            evals.append({"id": f.id, "dist": dist, "nectar": f.nectar, "score": score, "selected": False})
+            if score > best_s:
+                best_s, best_f, best_p = score, f, path
+        if not best_f:
+            return self._go_to_hive("No flower reachable within a safe energy budget")
+        evals.sort(key=lambda x: x["score"], reverse=True)
+        for item in evals:
+            item["selected"] = (item["id"] == best_f.id)
+        self._set_target(best_f, best_p, f"Move to Flower {best_f.id} (Intelligent Bee)", f"Best score {best_s:.2f} (nectar {best_f.nectar}, distance {len(best_p) - 1})", evals[:4])
