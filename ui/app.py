@@ -550,8 +550,6 @@ class BeeLogicApp:
         bx, by = self.bee.pos
         self.draw_bee(self.grid_surface, bx, by)
 
-        self.draw_legend(self.grid_surface)
-
         # 5. Mask outer corners
         self.grid_surface.blit(self.grid_mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
@@ -562,56 +560,6 @@ class BeeLogicApp:
 
         # 7. Subtle inner dark rim ensuring seamless grass-to-frame boundary
         pygame.draw.rect(self.canvas, SV_WOOD_DARK, grid_rect, width=2, border_radius=GRID_RADIUS)
-
-    def draw_legend(self, surface):
-        leg_w, leg_h = 440, 42
-        leg_rect = pygame.Rect(16, MAP_H - 56, leg_w, leg_h)
-
-        # Stardew wooden notice plank
-        pygame.draw.rect(surface, SV_WOOD_DARK, leg_rect, border_radius=6)
-        plank = leg_rect.inflate(-4, -4)
-        pygame.draw.rect(surface, SV_PARCHMENT, plank, border_radius=4)
-
-        # 3D inner bevel
-        pygame.draw.line(surface, SV_PARCHMENT_DARK, (plank.left, plank.top), (plank.right - 1, plank.top), 2)
-        pygame.draw.line(surface, SV_PARCHMENT_DARK, (plank.left, plank.top), (plank.left, plank.bottom - 1), 2)
-        pygame.draw.line(surface, SV_INSET_HI, (plank.left, plank.bottom - 1), (plank.right - 1, plank.bottom - 1), 1)
-
-        # Corner rivets
-        for cx, cy in [(leg_rect.left + 5, leg_rect.top + 5), (leg_rect.right - 9, leg_rect.top + 5),
-                       (leg_rect.left + 5, leg_rect.bottom - 9), (leg_rect.right - 9, leg_rect.bottom - 9)]:
-            pygame.draw.rect(surface, SV_WOOD_DARK, (cx, cy, 4, 4))
-            pygame.draw.rect(surface, SV_WOOD_RIVET, (cx + 1, cy + 1, 2, 2))
-
-        flower_icon = pygame.transform.scale(self.sprite_mgr.get_flower_sprite(1, True), (22, 22))
-        bee_icon = pygame.transform.scale(self.sprite_mgr.get_bee_frame("fly", "right", self.anim_time), (22, 24))
-        stone_sprite = self.sprite_mgr.get_stone_sprite()
-        stone_icon = pygame.transform.scale(stone_sprite, (22, 22)) if stone_sprite else None
-
-        lx = 28
-        # Hive
-        hive_box = pygame.Rect(lx, MAP_H - 43, 16, 16)
-        pygame.draw.rect(surface, SV_HIVE_FILL, hive_box, border_radius=3)
-        pygame.draw.rect(surface, SV_WOOD_DARK, hive_box, width=1, border_radius=3)
-        draw_text_shadow(surface, "Hive", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 22, MAP_H - 44), (0, 1))
-        lx += 85
-
-        # Obstacle
-        if stone_icon:
-            surface.blit(stone_icon, (lx - 2, MAP_H - 46))
-        else:
-            pygame.draw.rect(surface, (100, 116, 139), (lx, MAP_H - 43, 16, 16), border_radius=3)
-        draw_text_shadow(surface, "Obstacle", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 24, MAP_H - 44), (0, 1))
-        lx += 110
-
-        # Flower
-        surface.blit(flower_icon, (lx, MAP_H - 46))
-        draw_text_shadow(surface, "Flower", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 28, MAP_H - 44), (0, 1))
-        lx += 100
-
-        # Bee
-        surface.blit(bee_icon, (lx, MAP_H - 48))
-        draw_text_shadow(surface, "Bee", self.font_small_bold, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (lx + 28, MAP_H - 44), (0, 1))
 
     def draw_progress_bar(self, surface, x, y, width, height, current, max_val, fill_color):
         draw_stardew_bar(surface, x, y, width, height, current, max_val, bar_type='energy')
