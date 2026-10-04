@@ -1027,49 +1027,6 @@ class BeeLogicApp:
                 draw_text_shadow(self.canvas, eff_txt, self.font_header, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1500, bar_y + 4), (0, 1))
                 bar_y += 46
 
-            y += 248
-
-            # Two Pinned Summary Notes (Cards A and B)
-            box_w = 845
-            box_h = 160
-
-            # Card A: Key Findings
-            v_box1 = pygame.Rect(100, y, box_w, box_h)
-            draw_stardew_slot(self.canvas, v_box1)
-            pygame.draw.circle(self.canvas, SV_WOOD_DARK, (v_box1.centerx, v_box1.top + 6), 6)
-            pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (v_box1.centerx, v_box1.top + 6), 4)
-
-            intel = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_INTELLIGENT)
-            greedy = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_GREEDY)
-            nearest = next(r for r in self.comparison_results if r["strategy"] == STRATEGY_NEAREST)
-
-            eff_diff = ((intel["efficiency"] - greedy["efficiency"]) / max(0.001, greedy["efficiency"])) * 100
-            dist_diff = ((greedy["distance_travelled"] - intel["distance_travelled"]) / max(1, intel["distance_travelled"])) * 100
-
-            draw_text_shadow(self.canvas, "KEY QUANTITATIVE FINDINGS", self.font_header, (180, 85, 15), SV_TEXT_HI_SHADOW, (130, y + 16), (0, 1))
-            v_text1 = f"• Intelligent Bee achieved +{eff_diff:.1f}% higher efficiency than Highest Nectar (Greedy)."
-            v_text2 = f"• Greedy strategy traveled {dist_diff:.1f}% farther due to unweighted heuristic choices."
-            v_text3 = f"• Nearest Neighbor collected fewer total nectar units due to sub-optimal local clustering."
-
-            draw_text_shadow(self.canvas, v_text1, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 50), (0, 1))
-            draw_text_shadow(self.canvas, v_text2, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 80), (0, 1))
-            draw_text_shadow(self.canvas, v_text3, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (130, y + 110), (0, 1))
-
-            # Card B: Decision-Theoretic Summary
-            v_box2 = pygame.Rect(975, y, box_w, box_h)
-            draw_stardew_slot(self.canvas, v_box2)
-            pygame.draw.circle(self.canvas, SV_WOOD_DARK, (v_box2.centerx, v_box2.top + 6), 6)
-            pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (v_box2.centerx, v_box2.top + 6), 4)
-
-            draw_text_shadow(self.canvas, "CLASSICAL AI & DECISION-THEORETIC SUMMARY", self.font_header, (65, 140, 40), SV_TEXT_HI_SHADOW, (1005, y + 16), (0, 1))
-            c_text1 = "• Production Rules: Capacity threshold (90/90) & energy reserve safety margins."
-            c_text2 = "• Heuristic Formulation: Score = Nectar / (Distance ^ 1.5) balances yield & cost."
-            c_text3 = "• Pathfinding: Optimal obstacle traversal via A* Search and BFS grid exploration."
-
-            draw_text_shadow(self.canvas, c_text1, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 50), (0, 1))
-            draw_text_shadow(self.canvas, c_text2, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 80), (0, 1))
-            draw_text_shadow(self.canvas, c_text3, self.font_body, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (1005, y + 110), (0, 1))
-
         # High-contrast wooden footer prompt bar
         footer_box = pygame.Rect(100, 960, 1720, 48)
         pygame.draw.rect(self.canvas, SV_WOOD_DARK, footer_box, border_radius=8)
