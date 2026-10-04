@@ -343,40 +343,62 @@ class BeeLogicApp:
         sw, sh = sprite.get_size()
         surface.blit(sprite, (center_x - sw // 2, center_y - sh // 2))
 
-        if is_available:
-            # Stardew wooden garden stake / parchment tag above flower
-            if flower_id is not None:
-                id_txt = f"#{flower_id}"
-                id_surf = self.font_badge.render(id_txt, True, SV_TEXT_DARK)
-                pw = id_surf.get_width() + 8
-                ph = id_surf.get_height() + 2
-                px = center_x - pw // 2
-                py = y * CELL + 2
-                pygame.draw.rect(surface, SV_WOOD_DARK, (px, py, pw, ph), border_radius=3)
-                pygame.draw.rect(surface, (252, 240, 205), (px + 1, py + 1, pw - 2, ph - 2), border_radius=2)
-                draw_text_shadow(surface, id_txt, self.font_badge, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (px + 4, py + 1), (0, 1))
+        cell_left = x * CELL
+        cell_bottom = (y + 1) * CELL
 
-            # Golden honey droplet badge at bottom
-            pw = self.font_badge.size(str(nectar))[0] + 10
-            ph = self.font_badge.size(str(nectar))[1] + 4
-            px = center_x - pw // 2
-            py = y * CELL + CELL - ph - 2
-            pygame.draw.rect(surface, SV_WOOD_DARK, (px, py, pw, ph), border_radius=6)
-            pygame.draw.rect(surface, SV_NECTAR_MAIN, (px + 1, py + 1, pw - 2, ph - 2), border_radius=5)
-            pygame.draw.line(surface, SV_NECTAR_HI, (px + 2, py + 2), (px + pw - 3, py + 2), 1)
-            draw_text_shadow(surface, str(nectar), self.font_badge, (255, 255, 245), (70, 35, 10), (px + 5, py + 2), (1, 1))
-        else:
+        if is_available:
+            # 1. Flower Number Badge (Bottom-Left)
             if flower_id is not None:
                 id_txt = f"#{flower_id}"
+                tw, th = self.font_badge.size(id_txt)
+                pw_id = tw + 6
+                ph_id = th + 3
+                px_id = cell_left + 2
+                py_id = cell_bottom - ph_id - 2
+                id_rect = pygame.Rect(px_id, py_id, pw_id, ph_id)
+                pygame.draw.rect(surface, SV_WOOD_DARK, id_rect, border_radius=3)
+                pygame.draw.rect(surface, (252, 240, 205), id_rect.inflate(-2, -2), border_radius=2)
+                draw_text_shadow(surface, id_txt, self.font_badge, SV_TEXT_DARK, SV_TEXT_HI_SHADOW, (px_id + 3, py_id + 1), (0, 1))
+
+            # 2. Golden Nectar Level Badge (Bottom-Right)
+            nec_txt = str(nectar)
+            tw_n, th_n = self.font_badge.size(nec_txt)
+            pw_n = tw_n + 8
+            ph_n = th_n + 3
+            px_n = cell_left + CELL - pw_n - 2
+            py_n = cell_bottom - ph_n - 2
+            nec_rect = pygame.Rect(px_n, py_n, pw_n, ph_n)
+            pygame.draw.rect(surface, SV_WOOD_DARK, nec_rect, border_radius=4)
+            pygame.draw.rect(surface, SV_NECTAR_MAIN, nec_rect.inflate(-2, -2), border_radius=3)
+            pygame.draw.line(surface, SV_NECTAR_HI, (px_n + 2, py_n + 2), (px_n + pw_n - 3, py_n + 2), 1)
+            draw_text_shadow(surface, nec_txt, self.font_badge, (255, 255, 245), (70, 35, 10), (px_n + 4, py_n + 1), (1, 1))
+        else:
+            # 1. Depleted Flower Number Badge (Bottom-Left)
+            if flower_id is not None:
+                id_txt = f"#{flower_id}"
+                tw, th = self.font_badge.size(id_txt)
+                pw_id = tw + 6
+                ph_id = th + 3
+                px_id = cell_left + 2
+                py_id = cell_bottom - ph_id - 2
+                id_rect = pygame.Rect(px_id, py_id, pw_id, ph_id)
+                pygame.draw.rect(surface, (140, 110, 85), id_rect, width=1, border_radius=3)
+                pygame.draw.rect(surface, (225, 210, 190), id_rect.inflate(-2, -2), border_radius=2)
                 id_surf = self.font_badge.render(id_txt, True, (140, 110, 85))
-                pw = id_surf.get_width() + 8
-                ph = id_surf.get_height() + 2
-                px = center_x - pw // 2
-                py = y * CELL + 2
-                pygame.draw.rect(surface, (140, 110, 85), (px, py, pw, ph), width=1, border_radius=3)
-                surface.blit(id_surf, (px + 4, py + 1))
-            d_tag = self.font_badge.render("0", True, (140, 110, 85))
-            surface.blit(d_tag, (center_x - d_tag.get_width() // 2, y * CELL + CELL - 18))
+                surface.blit(id_surf, (px_id + 3, py_id + 1))
+
+            # 2. Depleted Nectar Badge "0" (Bottom-Right)
+            nec_txt = "0"
+            tw_n, th_n = self.font_badge.size(nec_txt)
+            pw_n = tw_n + 8
+            ph_n = th_n + 3
+            px_n = cell_left + CELL - pw_n - 2
+            py_n = cell_bottom - ph_n - 2
+            nec_rect = pygame.Rect(px_n, py_n, pw_n, ph_n)
+            pygame.draw.rect(surface, (140, 110, 85), nec_rect, width=1, border_radius=3)
+            pygame.draw.rect(surface, (225, 210, 190), nec_rect.inflate(-2, -2), border_radius=2)
+            d_tag = self.font_badge.render(nec_txt, True, (140, 110, 85))
+            surface.blit(d_tag, (px_n + 4, py_n + 1))
 
     def draw_bee(self, surface, x, y):
         if not self.running_sim or self.bee.finished:
@@ -1060,7 +1082,7 @@ class BeeLogicApp:
             pygame.draw.circle(self.canvas, SV_WOOD_DARK, (rx, footer_box.centery), 5)
             pygame.draw.circle(self.canvas, SV_WOOD_RIVET, (rx, footer_box.centery), 3)
 
-        hint_str = "Click anywhere or press [ ESC ] / [ SPACE ] to return to simulation  •  Benchmark chart saved to out/comparison_chart.png"
+        hint_str = "Click anywhere or press [ ESC ] / [ SPACE ] to return to simulation"
         hw, hh = self.font_body_bold.size(hint_str)
         hx = footer_box.centerx - hw // 2
         hy = footer_box.centery - hh // 2
